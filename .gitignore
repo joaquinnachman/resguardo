@@ -1,0 +1,5 @@
+dist/
+*.key
+go.local.mod
+go.local.sum
+*.rsgtmp

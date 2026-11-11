@@ -1,0 +1,23 @@
+{
+  "datos": {
+    "app": "Resguardo",
+    "version": "1.1.0",
+    "date": "2026-11-11",
+    "notes": [
+      "Resguardo ahora se actualiza solo: busca versiones nuevas al abrirse y cada 6 horas",
+      "Las instala cuando no hay un respaldo en curso ni un DAW abierto, y si algo sale mal vuelve sola a la versión anterior",
+      "En Opciones → General podés elegir que sólo te avise, o buscar a mano"
+    ],
+    "windows": {
+      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.1.0-Windows.zip",
+      "size": 4806677,
+      "sha256": "2510d861def4ae89fdae085583512ce9fbab97201f3eba5e642797e6295dfced"
+    },
+    "mac": {
+      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.1.0-Mac.zip",
+      "size": 8965350,
+      "sha256": "a44a2d56839c5e9beade111abaf8dfd2d365fc64ce16b3c33a988a676b35cde0"
+    }
+  },
+  "firma": "tZ2CsRK2d5h/746LVHG0OUvRZ8evV4gRDnD1psqdYxmBs79Anfp7jW2r3m/9B7TTer5LlnH4blAcB5w0DXxXDQ=="
+}

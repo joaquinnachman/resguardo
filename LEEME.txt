@@ -1,0 +1,84 @@
+RESGUARDO 1.1.0 — respaldos para músicos y productores
+=====================================================
+
+Hace todo lo que hace Cobian Backup (tareas completas, incrementales y
+diferenciales, compresión ZIP/7z, cifrado, FTP/SFTP, eventos, espejo,
+correo, etc.) y además entiende proyectos de Ableton, Cubase y Pro Tools:
+guarda una versión cada vez que guardás o cerrás el DAW, incluye los samples
+que están fuera de la carpeta del proyecto y te deja volver a cualquier versión.
+
+
+WINDOWS
+-------
+1. Copiá Resguardo.exe a una carpeta fija (por ejemplo C:\Programas\Resguardo).
+2. Abrilo. Si aparece el cartel azul de Windows ("Windows protegió su PC"),
+   tocá "Más información" y después "Ejecutar de todas formas". Pasa porque
+   el programa no está firmado; es sólo la primera vez.
+3. Queda un ícono en la bandeja (al lado del reloj). Clic: abre la ventana.
+   Clic derecho: ejecutar todo, pausar, cancelar o salir.
+   Color del ícono: verde = al día, ámbar = respaldando, rojo = hubo errores.
+4. En Opciones > General activá "Abrir Resguardo al iniciar sesión".
+
+Para copiar archivos abiertos (VSS) hay que ejecutarlo como administrador.
+
+Como servicio (avanzado, sin ventana ni ícono), desde una consola de
+administrador:
+  sc create Resguardo binPath= "\"C:\Programas\Resguardo\Resguardo.exe\" --servicio" start= auto
+Los datos del servicio quedan en C:\ProgramData\Resguardo.
+
+
+MAC (Apple Silicon e Intel)
+---------------------------
+1. Descomprimí y arrastrá Resguardo a Aplicaciones.
+2. La primera vez: clic derecho sobre Resguardo > Abrir > Abrir.
+   Si macOS no lo deja: Configuración del Sistema > Privacidad y seguridad >
+   "Abrir igualmente". Pasa porque la app no está notarizada por Apple.
+3. Resguardo corre en segundo plano, sin ícono en la barra. Para ver la
+   ventana, abrí la app de nuevo. Para cerrarlo del todo:
+   Opciones > General > Salir de Resguardo.
+4. Si respaldás carpetas como Documentos o Escritorio, macOS va a pedir
+   permiso la primera vez: aceptalo.
+
+
+ACTUALIZACIONES
+---------------
+Desde la versión 1.1.0, Resguardo busca solo si hay una versión nueva (al
+abrirse y cada 6 horas), la baja, comprueba que sea auténtica y la instala
+cuando no hay un respaldo en curso ni un DAW abierto. Se reinicia en unos
+segundos y vuelve solo; si la versión nueva no arrancara, vuelve a la
+anterior. Se configura en Opciones > General > Actualizaciones.
+
+En Windows, Resguardo.exe tiene que estar en una carpeta donde puedas
+escribir (por ejemplo Documentos\Resguardo o C:\Programas\Resguardo creada
+por vos), no en "Archivos de programa". En Mac, tiene que estar en
+Aplicaciones.
+
+Descargas: github.com/joaquinnachman/resguardo
+
+
+CÓMO QUEDAN LOS RESPALDOS DE PROYECTOS
+--------------------------------------
+<destino>\<carpeta de tus proyectos>\<proyecto>\
+    Actual\                  copia al día: se abre directo con el DAW
+    Actual\_Samples externos\ los samples que usa y estaban en otro lado
+    Versiones anteriores\    lo que se fue reemplazando, por fecha
+    _resguardo\              listas de cada versión (no tocar)
+
+Para volver a una versión usá Resguardo (Tareas > proyecto > Restaurar):
+arma una carpeta nueva con el proyecto completo de esa fecha y nunca pisa
+el original. "Sólo el .als/.cpr/.ptx" pone el archivo de esa versión al lado
+del actual, con la fecha en el nombre.
+
+
+DATOS DE RESGUARDO
+------------------
+Windows: %APPDATA%\Resguardo     Mac: ~/Library/Application Support/Resguardo
+Ahí están las tareas (listas\), el historial, el estado y los registros.
+Con --instancia "Otro nombre" podés tener otra instancia independiente.
+
+
+CRÉDITOS
+--------
+7-Zip de Igor Pavlov (licencia LGPL) se incluye para los archivos .7z.
+La lectura de sesiones de Pro Tools se basa en ptformat de Damien Zammit (LGPL).
+Tipografía Archivo (Omnibus-Type, licencia SIL Open Font).
