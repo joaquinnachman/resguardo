@@ -824,8 +824,9 @@ async function renderHistory(t, body) {
             h("button", { class: "btn primary", onclick: () => restoreRecordDialog(t, r) }, "Restaurar…"),
             h("button", { class: "btn", onclick: async () => { await api("history/park", { task: t.id, ids: [r.id], parked: !r.parked }); await loadHistory(t.id, true); renderContent(); } }, r.parked ? "Soltar" : "Fijar (no borrar)"),
             !r.parked ? h("button", { class: "btn danger", onclick: async () => {
-              const files = h("input", { type: "checkbox", checked: true });
-              const ok = await confirmSheet("Borrar el respaldo del " + fmtDate(r.started), h("label", { class: "check" }, files, h("span", null, "Borrar también sus archivos del destino")), "Borrar", true);
+              const files = h("input", { type: "checkbox", checked: !!t.separated });
+              const ok = await confirmSheet("Borrar el respaldo del " + fmtDate(r.started), h("label", { class: "check" }, files, h("span", null, "Borrar también sus archivos del destino",
+                !t.separated ? h("small", null, "Esta tarea actualiza siempre la misma copia: borrar los archivos borra la copia actual.") : null)), "Borrar", true);
               if (ok) { await attempt(() => api("history/delete", { task: t.id, ids: [r.id], files: files.checked })); await loadHistory(t.id, true); renderContent(); }
             } }, "Borrar…") : null)))));
       }
@@ -924,8 +925,27 @@ function fSelect(obj, key, label, options, onchange, numeric) {
   return label ? h("label", { class: "field" }, h("span", null, label), s) : s;
 }
 
+function isDirectTask(t) { return !t.separated && !!t.direct; }
+function layoutOf(t) { return t.separated ? "fecha" : t.direct ? "directo" : "tarea"; }
+function baseName(p) { const parts = String(p || "").split(/[\\/]+/).filter(Boolean); return parts.length ? parts[parts.length - 1].replace(/:$/, "") : ""; }
+
+// Cómo va a quedar la carpeta del primer origen dentro del primer destino.
+function layoutPreview(t) {
+  const d = (t.destinations || [])[0], src = (t.sources || [])[0];
+  if (!d || !d.path || !src || !src.path) return null;
+  const sep = d.kind && d.kind !== "local" ? "/" : isWin() ? "\\" : "/";
+  let p = d.path.replace(/[\\/]+$/, "");
+  if (t.topParentDir) p += sep + t.name;
+  if (t.separated) p += sep + t.name + " AAAA-MM-DD HH;MM;SS" + (t.typeInName ? " (" + (TYPE_NAMES[t.type] || t.type) + ")" : "");
+  else if (!t.direct || !["", "ninguna", "individual"].includes(t.compression || "")) p += sep + t.name;
+  return h("p", { class: "muted small" }, "Va a quedar así: ", h("code", null, p + sep + (baseName(src.path) || "…")));
+}
+
 function editorPane(t, tab, redraw) {
   const P = t.projects;
+  const layoutOpt = (v, title, text) => h("label", { class: "type-opt" },
+    h("input", { type: "radio", name: "tlayout", checked: layoutOf(t) === v, onchange: () => { t.separated = v === "fecha"; t.direct = v === "directo"; redraw(); } }),
+    h("b", null, title), h("small", null, text));
   switch (tab) {
     case "general": {
       const typeOpt = (v, title, text) => h("label", { class: "type-opt" },
@@ -946,9 +966,16 @@ function editorPane(t, tab, redraw) {
             h("input", { type: "text", value: t.group || "", list: "groups", oninput: (e) => (t.group = e.target.value) }),
             h("datalist", { id: "groups" }, [...new Set((S.data.tasks || []).map((x) => x.group).filter(Boolean))].map((g) => h("option", { value: g }))))),
         t.type !== "ficticio" && t.type !== "proyectos" ? h("div", { class: "block" },
+          h("h3", null, "Dónde queda cada respaldo"),
+          h("div", { class: "types" },
+            layoutOpt("fecha", "Una carpeta nueva cada vez", "Con la fecha y la hora en el nombre. Se van guardando varias copias."),
+            layoutOpt("tarea", "Una carpeta con el nombre de la tarea", "Cada respaldo actualiza esa misma copia."),
+            layoutOpt("directo", "Directo en el destino", "Sin carpetas extra: cada carpeta de origen queda tal cual, una al lado de la otra.")),
+          layoutPreview(t),
+          isDirectTask(t) && !["", "ninguna", "individual"].includes(t.compression || "") ? h("div", { class: "note-box" }, "Con compresión en un solo archivo, el archivo lleva el nombre de la tarea (Compresión → Sin comprimir para tener las carpetas sueltas).") : null,
+          isDirectTask(t) && !t.mirror ? h("p", { class: "muted small" }, "Para que lo que borrás en el origen también se vaya del destino, activá Espejo en Avanzado. Lo que quita no se borra: se aparta en “_Espejo seguro”.") : null,
           fCheck(t, "includeSubdirs", "Incluir subcarpetas"),
-          fCheck(t, "separated", "Crear un respaldo nuevo cada vez, con la fecha en el nombre", "Si lo desmarcás, cada respaldo pisa al anterior en la misma carpeta."),
-          isWin() ? fCheck(t, "useArchiveAttr", "Detectar cambios con el atributo de archivo de Windows", "Si no, se comparan fecha y tamaño (recomendado).") : null) : null,
+          isWin() ? fCheck(t, "useArchiveAttr", "Detectar cambios con el atributo de archivo de Windows", "Si no, se comparan fecha y tamaño (recomendado). Si lo activás y Cobian también usa el atributo, se pisan.") : null) : null,
         t.type !== "ficticio" && isWin() ? fCheck(t, "useVSS", "Usar instantáneas de volumen (VSS) para copiar archivos abiertos", "Necesita ejecutar Resguardo como administrador.") : null,
       ];
     }
@@ -1032,7 +1059,7 @@ function editorPane(t, tab, redraw) {
           t.type === "diferencial" ? fNum(t, "diffCopiesToKeep", "Diferenciales a conservar (0 = todos)") : null),
         t.type !== "completo" ? h("div", { class: "block" }, fSelect(t, "fixedFullWeekday", "Día fijo para el completo", [[-1, "Ninguno"], ...[1, 2, 3, 4, 5, 6, 0].map((d) => [d, DIAS_LARGOS[d]])], null, true)) : null,
         h("p", { class: "muted small" }, "Al borrar un completo viejo también se borran los incrementales o diferenciales que dependen de él. Los respaldos fijados nunca se borran."),
-        !t.separated ? h("div", { class: "note-box" }, "Esta tarea pisa siempre la misma copia (General → crear un respaldo nuevo cada vez está desmarcado), así que estas opciones no aplican.") : null,
+        !t.separated ? h("div", { class: "note-box" }, "Esta tarea actualiza siempre la misma copia (General → Dónde queda cada respaldo), así que estas opciones no aplican.") : null,
       ];
     case "compresion": {
       const enc = h("div", { class: "inline-fields" }, fCheck(t, "encrypt", "Cifrar con contraseña", t.compression === "ninguna" ? "Sin compresión, cada archivo se guarda cifrado como .rsg (se abre con Herramientas → Descifrar)." : "AES-256: se abre con 7-Zip, WinRAR o Resguardo.", redraw),
@@ -1090,8 +1117,8 @@ function editorPane(t, tab, redraw) {
       return [
         h("h2", null, "Avanzado"),
         t.type !== "proyectos" ? h("div", { class: "block" },
-          isWin() ? fCheck(t, "clearArchiveAttr", "Limpiar el atributo de archivo después de copiar") : null,
-          fCheck(t, "mirror", "Espejo: quitar del destino lo que se borró en el origen", "Sólo cuando cada respaldo pisa al anterior. Lo quitado se aparta en una carpeta “_Espejo seguro” (se cambia en Opciones).") ,
+          isWin() && t.useArchiveAttr ? fCheck(t, "clearArchiveAttr", "Limpiar el atributo de archivo después de copiar") : null,
+          fCheck(t, "mirror", "Espejo: quitar del destino lo que se borró en el origen", "Sólo cuando no se crea una carpeta nueva cada vez. Lo quitado se aparta en una carpeta “_Espejo seguro” (se cambia en Opciones). Nunca toca lo que está fuera de las carpetas de origen.") ,
           fCheck(t, "absolutePaths", "Usar rutas completas (C\\Usuarios\\…) dentro del respaldo"),
           fCheck(t, "topParentDir", "Guardar todos los respaldos de la tarea dentro de una carpeta con su nombre"),
           fCheck(t, "typeInName", "Agregar el tipo (Completo, Incremental…) al nombre del respaldo"),

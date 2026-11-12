@@ -166,7 +166,15 @@ func runClassic(rc *RunCtx) (*BackupRecord, error) {
 	useAttr := task.UseArchiveAttr && isWindows()
 	var selected []Entry
 	allFiles := map[string]Entry{}
+	tops := map[string]bool{}
+	dirs := map[string]bool{}
 	for _, e := range entries {
+		if !strings.Contains(e.Rel, "/") {
+			tops[e.Rel] = e.Dir
+		}
+		if e.Dir {
+			dirs[e.Rel] = true
+		}
 		if e.Dir {
 			if typ == TypeFull {
 				selected = append(selected, e)
@@ -204,6 +212,17 @@ func runClassic(rc *RunCtx) (*BackupRecord, error) {
 	rc.log.Info("%d archivos para respaldar (%s)", nfiles, humanBytes(nbytes))
 	if nfiles == 0 && typ != TypeFull && !rc.settings.SaveEmptyBackups {
 		rc.log.Info("No hay cambios desde el último respaldo: no se crea un respaldo vacío")
+		if task.Mirror && !task.Separated && (task.Compression == "" || task.Compression == "ninguna") {
+			// Puede que sólo se hayan borrado archivos: el espejo igual tiene que limpiar.
+			for _, dest := range task.Destinations {
+				if rc.ctx.Err() != nil {
+					break
+				}
+				if err := rc.mirrorOnly(dest, allFiles, dirs, tops); err != nil {
+					rc.fail("Destino %s: %v", describeLocation(dest), err)
+				}
+			}
+		}
 		st.LastRun = time.Now()
 		_ = rc.store.SaveState(task.ID)
 		return nil, nil
@@ -216,7 +235,7 @@ func runClassic(rc *RunCtx) (*BackupRecord, error) {
 		if rc.ctx.Err() != nil {
 			break
 		}
-		out, err := rc.toDestination(di, dest, typ, tsName, selected, allFiles, failed)
+		out, err := rc.toDestination(di, dest, typ, tsName, selected, allFiles, dirs, tops, failed)
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
 				break
@@ -305,7 +324,89 @@ func copyStamps(m map[string]FileStamp) map[string]FileStamp {
 }
 
 // toDestination escribe la selección en un destino según el modo de compresión.
-func (rc *RunCtx) toDestination(di int, dest Location, typ, tsName string, selected []Entry, all map[string]Entry, failed map[string]bool) ([]Output, error) {
+// isPlainCopy dice si la tarea copia carpetas (sin comprimir o un archivo
+// comprimido por archivo), que es cuando tienen sentido el espejo y el modo directo.
+func isPlainCopy(t Task) bool {
+	return t.Compression == "" || t.Compression == "ninguna" || t.Compression == "individual"
+}
+
+// isDirect: cada carpeta de origen va tal cual dentro del destino, sin la
+// carpeta con el nombre de la tarea ni la fecha.
+func isDirect(t Task) bool {
+	return t.Direct && !t.Separated && isPlainCopy(t)
+}
+
+// destLayout devuelve la carpeta donde se crea el respaldo (parent) y la
+// carpeta dentro de la cual quedan los orígenes (root).
+func (rc *RunCtx) destLayout(fsys FS, base, typ, tsName string) (parent, root, name string) {
+	task := rc.task
+	name = sanitizeName(task.Name)
+	if task.Separated {
+		name += " " + tsName
+		if task.TypeInName {
+			name += " (" + typeLabel(typ) + ")"
+		}
+	}
+	parent = base
+	if task.TopParentDir {
+		parent = fsys.Join(base, sanitizeName(task.Name))
+	}
+	root = fsys.Join(parent, name)
+	if isDirect(task) {
+		root = parent
+	}
+	return parent, root, name
+}
+
+// safeTopName: nombre de una carpeta o archivo de primer nivel, sin rutas.
+func safeTopName(n string) bool {
+	return n != "" && n != "." && n != ".." && !strings.ContainsAny(n, "/\\")
+}
+
+// onlyMatch dice si una entrada del primer nivel del destino pertenece a la tarea.
+func onlyMatch(only []string, name string) bool {
+	for _, top := range only {
+		if !safeTopName(top) {
+			continue
+		}
+		for _, suf := range []string{"", ".rsg", ".zip", ".7z"} {
+			if strings.EqualFold(name, top+suf) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func sortedTops(tops map[string]bool) []string {
+	out := make([]string, 0, len(tops))
+	for t := range tops {
+		out = append(out, t)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// mirrorOnly corre sólo la limpieza del espejo (cuando no hubo nada para copiar).
+func (rc *RunCtx) mirrorOnly(dest Location, all map[string]Entry, dirs, tops map[string]bool) error {
+	fsys, base, err := openFS(dest, rc.settings)
+	if err != nil {
+		return err
+	}
+	defer fsys.Close()
+	base = expandTokens(base, &rc.task)
+	if base == "" {
+		return fmt.Errorf("el destino no tiene ruta")
+	}
+	_, root, _ := rc.destLayout(fsys, base, rc.task.Type, "")
+	if _, err := fsys.Stat(root); err != nil {
+		return nil // todavía no hay copia
+	}
+	rc.mirrorClean(fsys, root, all, dirs, tops)
+	return nil
+}
+
+func (rc *RunCtx) toDestination(di int, dest Location, typ, tsName string, selected []Entry, all map[string]Entry, dirs, tops map[string]bool, failed map[string]bool) ([]Output, error) {
 	task := rc.task
 	fsys, base, err := openFS(dest, rc.settings)
 	if err != nil {
@@ -317,16 +418,11 @@ func (rc *RunCtx) toDestination(di int, dest Location, typ, tsName string, selec
 		return nil, fmt.Errorf("el destino no tiene ruta")
 	}
 	rc.log.Info("Destino: %s", describeLocation(Location{Kind: dest.Kind, Host: dest.Host, User: dest.User, Path: base}))
-	name := sanitizeName(task.Name)
-	if task.Separated {
-		name += " " + tsName
-		if task.TypeInName {
-			name += " (" + typeLabel(typ) + ")"
-		}
-	}
-	parent := base
-	if task.TopParentDir {
-		parent = fsys.Join(base, sanitizeName(task.Name))
+	parent, root, name := rc.destLayout(fsys, base, typ, tsName)
+	direct := isDirect(task)
+	var only []string
+	if direct {
+		only = sortedTops(tops)
 	}
 	if err := fsys.MkdirAll(parent); err != nil {
 		return nil, fmt.Errorf("no se pudo crear la carpeta de destino: %w", err)
@@ -354,7 +450,6 @@ func (rc *RunCtx) toDestination(di int, dest Location, typ, tsName string, selec
 
 	switch task.Compression {
 	case "", "ninguna":
-		root := fsys.Join(parent, name)
 		if err := fsys.MkdirAll(root); err != nil {
 			return nil, err
 		}
@@ -393,12 +488,11 @@ func (rc *RunCtx) toDestination(di int, dest Location, typ, tsName string, selec
 			rc.prog.FileDone()
 		}
 		if task.Mirror && !task.Separated && rc.ctx.Err() == nil {
-			rc.mirrorClean(fsys, root, all)
+			rc.mirrorClean(fsys, root, all, dirs, tops)
 		}
-		return []Output{{Dest: di, Path: root, Kind: "carpeta"}}, nil
+		return []Output{{Dest: di, Path: root, Kind: "carpeta", Only: only}}, nil
 
 	case "individual":
-		root := fsys.Join(parent, name)
 		for _, e := range selected {
 			if rc.ctx.Err() != nil {
 				return nil, rc.ctx.Err()
@@ -418,7 +512,7 @@ func (rc *RunCtx) toDestination(di int, dest Location, typ, tsName string, selec
 			}
 			markFail(e, err)
 		}
-		return []Output{{Dest: di, Path: root, Kind: "individual"}}, nil
+		return []Output{{Dest: di, Path: root, Kind: "individual", Only: only}}, nil
 
 	case "separado", "global":
 		groups := map[int][]Entry{}
@@ -585,9 +679,15 @@ func (rc *RunCtx) copyEncrypted(fsys FS, src, target string, info fs.FileInfo) e
 }
 
 // mirrorClean borra (o aparta) del destino lo que ya no existe en el origen.
-func (rc *RunCtx) mirrorClean(fsys FS, root string, all map[string]Entry) {
+// Sólo trabaja dentro de las carpetas de origen que existen ahora (tops): lo
+// que está suelto en el destino, y la copia de un origen que no se encontró
+// (un disco desconectado, por ejemplo), no se toca nunca.
+func (rc *RunCtx) mirrorClean(fsys FS, root string, all map[string]Entry, dirs, tops map[string]bool) {
 	rc.prog.Set("Espejo: limpiando archivos borrados en el origen")
 	keepDirs := map[string]bool{}
+	for d := range dirs {
+		keepDirs[d] = true // también las carpetas vacías que siguen en el origen
+	}
 	for rel := range all {
 		parts := strings.Split(rel, "/")
 		for i := 1; i < len(parts); i++ {
@@ -599,7 +699,11 @@ func (rc *RunCtx) mirrorClean(fsys FS, root string, all map[string]Entry) {
 		if rc.settings.SafeMirrorDir != "" && fsys.Kind() == "local" {
 			safeRoot = filepath.Join(rc.settings.SafeMirrorDir, sanitizeName(rc.task.Name), snapName(time.Now()))
 		} else {
-			safeRoot = fsys.Join(fsys.Dir(root), "_Espejo seguro ("+sanitizeName(rc.task.Name)+")", snapName(time.Now()))
+			holder := fsys.Dir(root)
+			if isDirect(rc.task) {
+				holder = root
+			}
+			safeRoot = fsys.Join(holder, "_Espejo seguro ("+sanitizeName(rc.task.Name)+")", snapName(time.Now()))
 		}
 	}
 	removed := 0
@@ -615,6 +719,12 @@ func (rc *RunCtx) mirrorClean(fsys FS, root string, all map[string]Entry) {
 				r = rel + "/" + e.Name()
 			}
 			p := fsys.Join(dir, e.Name())
+			if rel == "" {
+				if isDir, ok := tops[r]; ok && isDir && e.IsDir() {
+					walk(p, r)
+				}
+				continue
+			}
 			if e.IsDir() {
 				if keepDirs[r] {
 					walk(p, r)
@@ -738,7 +848,20 @@ func deleteRecordFiles(task Task, r BackupRecord, settings Settings, log *Logger
 			continue
 		}
 		paths := []string{o.Path}
-		if strings.HasSuffix(o.Path, ".001") {
+		if len(o.Only) > 0 {
+			// Modo directo: el destino es compartido; sólo se borra lo de esta tarea.
+			paths = nil
+			for _, top := range o.Only {
+				if !safeTopName(top) {
+					continue
+				}
+				for _, suf := range []string{"", ".rsg", ".zip", ".7z"} {
+					if p := fsys.Join(o.Path, top+suf); existsFS(fsys, p) {
+						paths = append(paths, p)
+					}
+				}
+			}
+		} else if strings.HasSuffix(o.Path, ".001") {
 			base := strings.TrimSuffix(o.Path, ".001")
 			for i := 2; i < 1000; i++ {
 				p := fmt.Sprintf("%s.%03d", base, i)

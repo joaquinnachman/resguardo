@@ -150,6 +150,9 @@ func restoreOutput(ctx context.Context, cp *Copier, loc Location, settings Setti
 				return err
 			}
 			for _, e := range entries {
+				if rel == "" && len(o.Only) > 0 && !onlyMatch(o.Only, e.Name()) {
+					continue // modo directo: lo demás del destino no es de esta tarea
+				}
 				src := fsys.Join(p, e.Name())
 				r := filepath.Join(rel, e.Name())
 				if e.IsDir() {

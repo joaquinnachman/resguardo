@@ -519,3 +519,87 @@ func TestTriggers(t *testing.T) {
 		t.Fatalf("cola tras cerrar el DAW: %+v", q)
 	}
 }
+
+func TestDirectMirror(t *testing.T) {
+	store, log, e, root := testEnv(t)
+	base := time.Now().Add(-time.Hour)
+	a := filepath.Join(root, "Proyectos", "Tema A")
+	b := filepath.Join(root, "Otros", "Tema B")
+	writeFile(t, filepath.Join(a, "Tema A.als"), []byte("a"), base)
+	writeFile(t, filepath.Join(a, "Samples", "bombo.wav"), []byte("bombo"), base)
+	writeFile(t, filepath.Join(a, "Samples", "viejo.wav"), []byte("viejo"), base)
+	writeFile(t, filepath.Join(b, "Tema B.cpr"), []byte("b"), base)
+	dst := filepath.Join(root, "PRUEBABK")
+	// algo que ya estaba en el destino y no es de la tarea
+	writeFile(t, filepath.Join(dst, "Cosas mías", "nota.txt"), []byte("no tocar"), base)
+	writeFile(t, filepath.Join(dst, "suelto.txt"), []byte("no tocar"), base)
+
+	task := NewTask()
+	task.Name = "Prueba"
+	task.Type = TypeIncr
+	task.Separated = false
+	task.Direct = true
+	task.Mirror = true
+	task.Sources = []Location{{Path: a}, {Path: b}}
+	task.Destinations = []Location{{Path: dst}}
+	store.PutTask(task)
+	run(t, e, task.ID, false, "")
+
+	got := treeOf(t, dst)
+	want := []string{"Cosas mías/nota.txt", "Tema A/Samples/bombo.wav", "Tema A/Samples/viejo.wav", "Tema A/Tema A.als", "Tema B/Tema B.cpr", "suelto.txt"}
+	if strings.Join(keys(got), "|") != strings.Join(want, "|") {
+		dumpLog(t, log)
+		t.Fatalf("destino: %v", keys(got))
+	}
+
+	// Sólo se borra un archivo (sin otros cambios): el espejo igual limpia.
+	os.Remove(filepath.Join(a, "Samples", "viejo.wav"))
+	os.Remove(filepath.Join(a, "Samples", "bombo.wav")) // Samples queda vacía en el origen
+	// Un origen que no aparece (disco desconectado): su copia no se toca.
+	os.Rename(b, b+" (desconectado)")
+	run(t, e, task.ID, false, "")
+	if _, err := os.Stat(filepath.Join(dst, "Tema A", "Samples", "viejo.wav")); err == nil {
+		dumpLog(t, log)
+		t.Fatal("el espejo no quitó el archivo borrado")
+	}
+	if _, err := os.Stat(filepath.Join(dst, "Tema A", "Samples")); err != nil {
+		t.Fatal("se quitó una carpeta que sigue en el origen")
+	}
+	if m, _ := filepath.Glob(filepath.Join(dst, "_Espejo seguro (Prueba)", "*", "Tema A", "Samples", "viejo.wav")); len(m) != 1 {
+		dumpLog(t, log)
+		t.Fatal("lo quitado no quedó apartado dentro del destino")
+	}
+	for _, p := range []string{"Tema B/Tema B.cpr", "Cosas mías/nota.txt", "suelto.txt", "Tema A/Tema A.als"} {
+		if _, err := os.Stat(filepath.Join(dst, filepath.FromSlash(p))); err != nil {
+			dumpLog(t, log)
+			t.Fatalf("se tocó %s", p)
+		}
+	}
+	os.Rename(b+" (desconectado)", b)
+
+	// Restaurar trae sólo lo de la tarea, con sus carpetas.
+	h := store.History(task.ID)
+	if len(h) == 0 || len(h[0].Outputs) != 1 || h[0].Outputs[0].Path != dst {
+		t.Fatalf("registro: %+v", h)
+	}
+	target := filepath.Join(root, "Restaurado")
+	if _, err := RestoreRecord(context.Background(), store, task, h[0].ID, 0, target, "", &Progress{}, log); err != nil {
+		t.Fatal(err)
+	}
+	rt := keys(treeOf(t, target))
+	if strings.Join(rt, "|") != "Tema A/Tema A.als|Tema B/Tema B.cpr" {
+		t.Fatalf("restaurado: %v", rt)
+	}
+
+	// Borrar el respaldo con sus archivos borra sólo las carpetas de la tarea.
+	deleteRecordFiles(task, h[0], store.GetSettings(), log)
+	left := keys(treeOf(t, dst))
+	for _, p := range left {
+		if strings.HasPrefix(p, "Tema ") {
+			t.Fatalf("quedó %s", p)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dst, "Cosas mías", "nota.txt")); err != nil {
+		t.Fatal("se borró algo que no era de la tarea")
+	}
+}

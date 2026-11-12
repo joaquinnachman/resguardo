@@ -9,7 +9,7 @@ import (
 const AppName = "Resguardo"
 
 // AppVersion es var (y no const) para poder compilar versiones de prueba con -ldflags -X.
-var AppVersion = "1.1.0"
+var AppVersion = "1.1.1"
 
 // ---------- Tareas ----------
 
@@ -113,6 +113,7 @@ type Task struct {
 
 	IncludeSubdirs bool `json:"includeSubdirs"`
 	Separated      bool `json:"separated"`
+	Direct         bool `json:"direct"` // sin carpeta de la tarea: cada origen queda tal cual dentro del destino
 	UseArchiveAttr bool `json:"useArchiveAttr"`
 	UseVSS         bool `json:"useVSS"`
 
@@ -390,6 +391,9 @@ type Output struct {
 	Dest int    `json:"dest"`
 	Path string `json:"path"` // carpeta o archivo creado (ruta completa en el destino)
 	Kind string `json:"kind"` // carpeta | zip | 7z | individual | espejo
+	// Only: si no está vacío, Path es el destino compartido y el respaldo es
+	// sólo estas carpetas o archivos dentro de él (modo directo).
+	Only []string `json:"only,omitempty"`
 }
 
 type BackupRecord struct {
