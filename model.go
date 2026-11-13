@@ -9,7 +9,7 @@ import (
 const AppName = "Resguardo"
 
 // AppVersion es var (y no const) para poder compilar versiones de prueba con -ldflags -X.
-var AppVersion = "1.1.1"
+var AppVersion = "1.2.0"
 
 // ---------- Tareas ----------
 
@@ -156,7 +156,8 @@ type Task struct {
 
 	Projects ProjectsConfig `json:"projects"`
 
-	Created time.Time `json:"created"`
+	ImportedFrom string    `json:"importedFrom,omitempty"` // p. ej. "cobian11:{id}", para no importarla dos veces
+	Created      time.Time `json:"created"`
 }
 
 func newID() string {

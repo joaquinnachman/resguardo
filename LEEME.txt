@@ -1,4 +1,4 @@
-RESGUARDO 1.1.1 — respaldos para músicos y productores
+RESGUARDO 1.2.0 — respaldos para músicos y productores
 =====================================================
 
 Hace todo lo que hace Cobian Backup (tareas completas, incrementales y
@@ -10,14 +10,21 @@ que están fuera de la carpeta del proyecto y te deja volver a cualquier versió
 
 WINDOWS
 -------
-1. Copiá Resguardo.exe a una carpeta fija (por ejemplo C:\Programas\Resguardo).
-2. Abrilo. Si aparece el cartel azul de Windows ("Windows protegió su PC"),
-   tocá "Más información" y después "Ejecutar de todas formas". Pasa porque
-   el programa no está firmado; es sólo la primera vez.
+1. Abrí Resguardo-Instalador-Windows.exe. Si aparece el cartel azul de
+   Windows ("Windows protegió su PC"), tocá "Más información" y después
+   "Ejecutar de todas formas". Pasa porque el programa no está firmado.
+2. Tocá Instalar. Se instala sólo para tu usuario (no pide permisos de
+   administrador) y deja accesos en el menú Inicio y en el escritorio.
+   Si Resguardo estaba abierto, lo cierra para instalarse.
 3. Queda un ícono en la bandeja (al lado del reloj). Clic: abre la ventana.
    Clic derecho: ejecutar todo, pausar, cancelar o salir.
    Color del ícono: verde = al día, ámbar = respaldando, rojo = hubo errores.
-4. En Opciones > General activá "Abrir Resguardo al iniciar sesión".
+4. Se abre solo al iniciar sesión (se cambia en Opciones > General).
+5. Para desinstalarlo: Configuración > Aplicaciones > Resguardo. Tus
+   respaldos no se tocan; al final te pregunta si borrar tus tareas.
+
+Si en vez del instalador usás el zip: copiá Resguardo.exe a una carpeta
+tuya (por ejemplo Documentos\Resguardo) y abrilo desde ahí.
 
 Para copiar archivos abiertos (VSS) hay que ejecutarlo como administrador.
 
@@ -48,12 +55,21 @@ cuando no hay un respaldo en curso ni un DAW abierto. Se reinicia en unos
 segundos y vuelve solo; si la versión nueva no arrancara, vuelve a la
 anterior. Se configura en Opciones > General > Actualizaciones.
 
-En Windows, Resguardo.exe tiene que estar en una carpeta donde puedas
-escribir (por ejemplo Documentos\Resguardo o C:\Programas\Resguardo creada
-por vos), no en "Archivos de programa". En Mac, tiene que estar en
-Aplicaciones.
+Instalado con el instalador, se actualiza sin pedir nada. Si usás el
+Resguardo.exe suelto, tiene que estar en una carpeta donde puedas escribir
+(no en "Archivos de programa"). En Mac, tiene que estar en Aplicaciones.
 
 Descargas: github.com/joaquinnachman/resguardo
+
+
+IMPORTAR DESDE COBIAN
+---------------------
+Herramientas > Importar desde Cobian. "Buscar listas de Cobian" encuentra
+las de Cobian Backup 11 (C:\Program Files (x86)\Cobian Backup 11\DB) y
+Cobian Reflector; también podés elegir el archivo .lst a mano. Antes de
+importar te muestra cada tarea con lo que no se pudo pasar igual. Por
+defecto entran desactivadas, para que no corran a la vez que en Cobian, y
+podés mandarlas a otra carpeta de destino. Las contraseñas no se importan.
 
 
 CÓMO QUEDAN LOS RESPALDOS DE PROYECTOS

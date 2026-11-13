@@ -60,9 +60,17 @@ func main() {
 	daemon := flag.Bool("daemon", false, "motor en segundo plano")
 	trasActualizar := flag.Bool("tras-actualizar", false, "")
 	puerto := flag.Int("puerto", 0, "")
+	cerrar := flag.Bool("cerrar", false, "cierra Resguardo si está abierto (lo usa el instalador)")
 	flag.Parse()
 	instanceName = *inst
 	serviceMode = *servicio
+
+	if *cerrar {
+		if !closeRunningApp(20 * time.Second) {
+			os.Exit(1)
+		}
+		return
+	}
 
 	if *ventana != "" {
 		runWindow(*ventana)
@@ -148,6 +156,7 @@ func startApp() (*App, error) {
 	if s.Autostart {
 		_ = setAutostart(true) // por si se movió el programa
 	}
+	syncInstallInfo() // la versión que muestra Windows en "Aplicaciones instaladas"
 	return app, nil
 }
 

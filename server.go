@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"embed"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -883,6 +884,65 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 		}
 		s.log.Info("Se importaron %d tareas", len(tasks))
 		writeJSON(w, map[string]int{"imported": len(tasks)})
+	case "import/foreign/find":
+		writeJSON(w, findForeignLists())
+	case "import/foreign/preview":
+		var b struct {
+			Path string `json:"path"`
+			Name string `json:"name"`
+			Data string `json:"data"` // base64
+		}
+		if err := readBody(r, &b); err != nil {
+			writeErr(w, 400, "solicitud inválida")
+			return
+		}
+		var data []byte
+		var err error
+		if b.Data != "" {
+			data, err = base64.StdEncoding.DecodeString(b.Data)
+		} else {
+			data, err = os.ReadFile(b.Path)
+			b.Name = filepath.Base(b.Path)
+		}
+		if err != nil {
+			writeErr(w, 400, "no se pudo leer el archivo: "+err.Error())
+			return
+		}
+		p, err := parseForeignList(b.Name, data)
+		if err != nil {
+			writeErr(w, 400, err.Error())
+			return
+		}
+		prev := map[string]string{}
+		for _, t := range s.store.GetTasks() {
+			if t.ImportedFrom != "" {
+				prev[t.ImportedFrom] = t.Name
+			}
+		}
+		for i := range p.Tasks {
+			p.Tasks[i].Existing = prev[p.Tasks[i].Task.ImportedFrom]
+		}
+		writeJSON(w, p)
+	case "import/foreign/apply":
+		var b struct {
+			Program string `json:"program"`
+			Tasks   []Task `json:"tasks"`
+		}
+		if err := readBody(r, &b); err != nil {
+			writeErr(w, 400, "solicitud inválida")
+			return
+		}
+		for _, t := range b.Tasks {
+			t.ID = newID()
+			t.Created = time.Now()
+			fillSlices(&t)
+			if err := s.store.PutTask(t); err != nil {
+				writeErr(w, 500, err.Error())
+				return
+			}
+		}
+		s.log.Info("Se importaron %d tareas de %s", len(b.Tasks), b.Program)
+		writeJSON(w, map[string]int{"imported": len(b.Tasks)})
 	case "autostart":
 		var b struct{ On bool }
 		_ = readBody(r, &b)

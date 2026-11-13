@@ -267,3 +267,17 @@ func listDrives() []string {
 func detach(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 }
+
+func waitProcessExit(pid int, timeout time.Duration) {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if syscall.Kill(pid, 0) != nil {
+			return
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+}
+
+func closeAppWindows(time.Duration) {}
+
+func syncInstallInfo() {}

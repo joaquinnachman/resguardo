@@ -11,6 +11,15 @@ rm -rf "$DIST" && mkdir -p "$DIST/tmp"
 echo "Windows…"
 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w -H windowsgui ${X}" -o "$DIST"/tmp/Resguardo.exe .
 
+cp LEEME.txt "$DIST"/tmp/LEEME.txt
+if command -v makensis >/dev/null; then
+  echo "Instalador de Windows…"
+  ABS=$(cd "$DIST" && pwd)
+  makensis -V2 -DVERSION="${VERSION}" -DSRC="$ABS/tmp" -DICON="$PWD/icons/app.ico" -DOUT="$ABS/Resguardo-${VERSION}-Instalador-Windows.exe" installer/resguardo.nsi
+else
+  echo "Aviso: falta makensis (paquete nsis); no se armó el instalador de Windows."
+fi
+
 echo "Mac…"
 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-s -w ${X}" -o "$DIST"/tmp/mac-arm64 .
 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "-s -w ${X}" -o "$DIST"/tmp/mac-amd64 .
@@ -39,7 +48,6 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-cp LEEME.txt "$DIST"/tmp/LEEME.txt
 (cd "$DIST/tmp" && zip -qr -X "../Resguardo-${VERSION}-Windows.zip" Resguardo.exe LEEME.txt)
 (cd "$DIST/tmp" && zip -qry -X "../Resguardo-${VERSION}-Mac.zip" Resguardo.app LEEME.txt)
 cp "$DIST"/tmp/Resguardo.exe "$DIST"/

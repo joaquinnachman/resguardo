@@ -536,3 +536,80 @@ func listDrives() []string {
 
 // detach: en Windows el proceso hijo ya sigue vivo cuando el padre termina.
 func detach(cmd *exec.Cmd) {}
+
+func waitProcessExit(pid int, timeout time.Duration) {
+	h, err := windows.OpenProcess(windows.SYNCHRONIZE, false, uint32(pid))
+	if err != nil {
+		return // ya no existe
+	}
+	defer windows.CloseHandle(h)
+	ms := uint32(timeout / time.Millisecond)
+	if timeout <= 0 {
+		ms = 0
+	}
+	_, _ = windows.WaitForSingleObject(h, ms)
+}
+
+// closeAppWindows cierra las ventanas de otros procesos Resguardo.exe (la
+// ventana de la interfaz es un proceso aparte) y espera a que terminen.
+func closeAppWindows(timeout time.Duration) {
+	self := uint32(os.Getpid())
+	pids := map[uint32]bool{}
+	snap, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPPROCESS, 0)
+	if err != nil {
+		return
+	}
+	var pe windows.ProcessEntry32
+	pe.Size = uint32(unsafe.Sizeof(pe))
+	if windows.Process32First(snap, &pe) == nil {
+		for {
+			if pe.ProcessID != self && strings.EqualFold(windows.UTF16ToString(pe.ExeFile[:]), "Resguardo.exe") {
+				pids[pe.ProcessID] = true
+			}
+			if windows.Process32Next(snap, &pe) != nil {
+				break
+			}
+		}
+	}
+	windows.CloseHandle(snap)
+	if len(pids) == 0 {
+		return
+	}
+	cb := syscall.NewCallback(func(hwnd uintptr, _ uintptr) uintptr {
+		var pid uint32
+		procGetWindowThreadProcessId.Call(hwnd, uintptr(unsafe.Pointer(&pid)))
+		if pids[pid] {
+			procPostMessageW.Call(hwnd, 0x0010, 0, 0) // WM_CLOSE
+		}
+		return 1
+	})
+	procEnumWindows.Call(cb, 0)
+	deadline := time.Now().Add(timeout)
+	for pid := range pids {
+		waitProcessExit(int(pid), time.Until(deadline))
+	}
+}
+
+const uninstallKey = `Software\Microsoft\Windows\CurrentVersion\Uninstall\Resguardo`
+
+// syncInstallInfo: si Resguardo se instaló con el instalador y este es el
+// programa instalado, actualiza la versión que muestra Windows (después de
+// una actualización automática quedaría la vieja).
+func syncInstallInfo() {
+	if instanceName != "" || serviceMode {
+		return
+	}
+	k, err := registry.OpenKey(registry.CURRENT_USER, uninstallKey, registry.QUERY_VALUE|registry.SET_VALUE)
+	if err != nil {
+		return
+	}
+	defer k.Close()
+	loc, _, err := k.GetStringValue("InstallLocation")
+	exe, err2 := os.Executable()
+	if err != nil || err2 != nil || !strings.EqualFold(filepath.Clean(loc), filepath.Dir(exe)) {
+		return
+	}
+	if v, _, _ := k.GetStringValue("DisplayVersion"); v != AppVersion {
+		_ = k.SetStringValue("DisplayVersion", AppVersion)
+	}
+}

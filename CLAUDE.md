@@ -11,6 +11,8 @@ export GOPROXY=direct GOSUMDB=off GOTOOLCHAIN=local GOFLAGS="-mod=mod -modfile=g
 go test ./... && ./build.sh
 ```
 
+El instalador de Windows sale de `installer/resguardo.nsi` con NSIS (`apt-get install nsis`; `build.sh` lo arma si encuentra `makensis`). Es de 64 bits e instala por usuario en `%LOCALAPPDATA%\Programs\Resguardo`, para que la actualización automática pueda reemplazar el .exe. Se puede probar con Wine 64 bits (`/usr/lib/wine/wine64`, con Xvfb y xdotool para tocar botones).
+
 `rsrc_windows_amd64.syso` (ícono, manifiesto y versión del .exe) sale de `winres/winres.json` con go-winres; al cambiar de versión hay que regenerarlo.
 
 ## Publicar una versión nueva (la app se actualiza sola)
@@ -19,7 +21,7 @@ go test ./... && ./build.sh
 2. `go test ./... && ./build.sh`
 3. Escribir las novedades (una por línea, en lenguaje de usuario) en un archivo de texto.
 4. `go run ./tools/publicar -clave <archivo con la clave> -notas <novedades.txt>`
-   Copia los zips a `descargas/` (con la versión en el nombre y con nombre fijo para el README) y escribe `version.json` firmado.
+   Copia los zips y el instalador a `descargas/` (con la versión en el nombre y con nombre fijo para el README), borra los de versiones anteriores y escribe `version.json` firmado. Las actualizaciones usan el zip; el instalador es para instalar la primera vez.
 5. Commit y push a `main`.
 
 Reglas:
@@ -27,3 +29,4 @@ Reglas:
 - Nunca volver a publicar una versión con el mismo número y otros archivos: siempre un número nuevo.
 - La app consulta `https://raw.githubusercontent.com/joaquinnachman/resguardo/main/version.json` al abrirse y cada 6 horas. La instala cuando no hay respaldos en curso ni un DAW abierto, y si la versión nueva no arranca en 45 s vuelve sola a la anterior.
 - Probar actualizaciones sin publicar: variable de entorno `RESGUARDO_ACTUALIZACIONES` con otra dirección de `version.json` (igual se exige la firma).
+- Importar de Cobian (`importar.go`): el formato de Cobian 11 se dedujo de listas de ejemplo; si Joaquín pasa su `MainList.lst` real, usarla para ajustar (días de la semana, eventos, FTP) y agregarla a las pruebas sin datos personales.

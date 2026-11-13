@@ -1,24 +1,23 @@
 {
   "datos": {
     "app": "Resguardo",
-    "version": "1.1.1",
-    "date": "2026-11-12",
+    "version": "1.2.0",
+    "date": "2026-11-13",
     "notes": [
-      "Nueva opción en General → \"Dónde queda cada respaldo\": Directo en el destino. Cada carpeta de origen queda tal cual dentro del destino, sin la carpeta con el nombre de la tarea ni la fecha.",
-      "El Espejo ahora sólo limpia dentro de las carpetas de origen: nunca toca lo demás que haya en el destino, ni la copia de un origen que no se encontró (por ejemplo, un disco desconectado).",
-      "El Espejo también limpia cuando lo único que cambió es que borraste archivos.",
-      "\"Limpiar el atributo de archivo\" aparece sólo cuando la tarea usa ese atributo."
+      "Instalador para Windows: se instala sólo para tu usuario, sin pedir permisos de administrador, con accesos en el menú Inicio y el escritorio, y se desinstala desde Aplicaciones. Si Resguardo está abierto, lo cierra solo para instalarse.",
+      "Importar desde Cobian (Herramientas): encuentra tus listas de Cobian Backup 11 y Cobian Reflector, te muestra cada tarea antes de importarla y te deja mandarlas a otra carpeta de destino. Entran desactivadas para no correr a la vez que en Cobian.",
+      "Si una tarea tiene el cifrado activado pero no tiene contraseña, ahora avisa en vez de copiar sin cifrar."
     ],
     "windows": {
-      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.1.1-Windows.zip",
-      "size": 4811427,
-      "sha256": "4948f0f97b7d889aad271f50e94878ce5c5946bd062e1dc6bba10b883fc1a86e"
+      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.2.0-Windows.zip",
+      "size": 4849608,
+      "sha256": "2d2d3b46966f6a9e764d5550cbc29ec2f7c943c515a52fd76e4eb6dbef9e049e"
     },
     "mac": {
-      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.1.1-Mac.zip",
-      "size": 8970149,
-      "sha256": "42f40051b662841d7768b9fd5b07bff2edcf4cf4255096edcf6eeff85eef6531"
+      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.2.0-Mac.zip",
+      "size": 9036414,
+      "sha256": "92881c80a802cc7267504fe0f57c3d5d31634c3390b41eb978529fdee614b157"
     }
   },
-  "firma": "JmGUJskxBWGhWGMgpppcB+ya7Zqf5ItWDuuxi5x9+VMwVr8zO2tYd2hfA1v6ZeA2+yT7lm3ec4uf/RnV29ijAw=="
+  "firma": "OrtesXg/w3r03/A/Y1DRtq6ZMJ294UN/5g2G2CP1wzheqgtvHpFYlMzFM978xqRZyYOVgVH+BuaRSrvaDWANCA=="
 }

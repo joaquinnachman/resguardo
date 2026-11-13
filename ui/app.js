@@ -1269,6 +1269,13 @@ function renderTools() {
     const f = e.target.files[0]; if (!f) return;
     try { const tasks = JSON.parse(await f.text()); await attempt(() => api("import", tasks), "Tareas importadas"); await reload(); } catch { toast("El archivo no es una lista de tareas de Resguardo", true); }
   } });
+  const lstIn = h("input", { type: "file", accept: ".lst", class: "hidden", onchange: async (e) => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    const buf = new Uint8Array(await f.arrayBuffer());
+    let bin = ""; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+    const p = await attempt(() => api("import/foreign/preview", { name: f.name, data: btoa(bin) }));
+    if (p) importPreviewDialog(p);
+  } });
   v.replaceChildren(h("h1", null, "Herramientas"),
     tool("Descomprimir", "Abre los archivos ZIP y 7z que crea Resguardo, también los partidos en varias partes y los cifrados.",
       pathPick(exA, { files: true, title: "Archivo comprimido" }), pathPick(exD, { title: "Destino" }), exP,
@@ -1279,12 +1286,92 @@ function renderTools() {
     tool("Borrar carpetas con rutas largas", "Borra carpetas que el Explorador no puede borrar porque sus rutas son demasiado largas.",
       pathPick(delP, { title: "Carpeta a borrar" }),
       h("div", null, h("button", { class: "btn danger", onclick: async () => { if (delP.value && await confirmSheet("Borrar " + delP.value, h("p", null, "Se borra la carpeta con todo su contenido. No se puede deshacer."), "Borrar", true)) attempt(() => api("tools/delete", { path: delP.value }), "Borrando…"); } }, "Borrar"))),
+    tool("Importar desde Cobian", "Trae las tareas que ya tenés armadas en Cobian Backup 11 o Cobian Reflector. Antes de importar te muestra cómo van a quedar. Cobian no se toca.",
+      h("div", { class: "row" },
+        h("button", { class: "btn primary", onclick: findCobianLists }, "Buscar listas de Cobian"),
+        h("button", { class: "btn", onclick: () => lstIn.click() }, "Elegir un archivo .lst…"), lstIn)),
     tool("Exportar e importar tareas", "Para pasar tus tareas a otra computadora o guardarlas aparte.",
       h("div", { class: "row" }, h("a", { class: "btn", href: "/api/export", download: "resguardo-tareas.json" }, "Exportar la lista actual"), h("button", { class: "btn", onclick: () => imp.click() }, "Importar…"), imp)),
     tool("Optimizar el historial", "Quita del historial los respaldos cuyos archivos ya no existen en el destino.",
       h("div", null, h("button", { class: "btn", onclick: async () => { const r = await attempt(() => api("history/optimize", {})); if (r) { toast(r.removed + " registros quitados"); S.history = {}; } } }, "Optimizar"))),
     tool("Notas", "Un lugar para anotar lo que quieras: discos, claves de recuperación, recordatorios.",
       notes, h("div", null, h("button", { class: "btn", onclick: async () => { const s = clone(S.data.settings); s.notes = notes.value; await attempt(() => api("settings", s), "Notas guardadas"); S.data.settings.notes = notes.value; } }, "Guardar notas"))));
+}
+
+// ---------------------------------------------------------------------------
+// Importar desde Cobian
+// ---------------------------------------------------------------------------
+async function findCobianLists() {
+  const found = await attempt(() => api("import/foreign/find"));
+  if (!found) return;
+  const ok = found.filter((f) => !f.error && f.tasks > 0);
+  if (!found.length) { toast("No encontré listas de Cobian en esta computadora. Elegí el archivo .lst a mano.", true); return; }
+  if (ok.length === 1 && found.length === 1) return previewCobianPath(ok[0].path);
+  sheet({ title: "Listas de Cobian en esta computadora", size: "md", body: h("div", { class: "items" }, found.map((f) => h("div", { class: "it" },
+    h("div", { class: "txt" }, h("b", null, f.path.split(/[\\/]/).pop()), " · ", f.program, f.error ? null : " · " + f.tasks + (f.tasks === 1 ? " tarea" : " tareas"),
+      h("div", { class: "muted small", title: f.path }, f.error ? f.error : f.path + " · " + fmtDate(f.modified))),
+    f.error ? null : h("button", { class: "btn small", onclick: () => previewCobianPath(f.path) }, "Ver")))),
+    foot: [h("button", { class: "btn", onclick: () => $("#layer").replaceChildren() }, "Cerrar")] });
+}
+
+async function previewCobianPath(path) {
+  const p = await attempt(() => api("import/foreign/preview", { path }));
+  if (p) importPreviewDialog(p);
+}
+
+function importPreviewDialog(p) {
+  const opts = { disabled: true, dest: "mismo", destPath: "" };
+  const sel = p.tasks.map((it) => !it.existing);
+  const destIn = h("input", { type: "text", placeholder: "Carpeta para los respaldos de estas tareas", oninput: (e) => (opts.destPath = e.target.value.trim()) });
+  const count = () => sel.filter(Boolean).length;
+  const go = h("button", { class: "btn primary" });
+  const setGo = () => { const n = count(); go.textContent = n === 1 ? "Importar 1 tarea" : "Importar " + n + " tareas"; go.disabled = !n; };
+  const destRow = h("div", { class: "hidden", style: { marginTop: "6px" } }, pathPick(destIn, { title: "Destino" }));
+  const destOpt = (v, title, text) => h("label", { class: "type-opt" },
+    h("input", { type: "radio", name: "impdest", checked: opts.dest === v, onchange: () => { opts.dest = v; destRow.classList.toggle("hidden", v !== "otra"); } }),
+    h("b", null, title), h("small", null, text));
+  const firstDest = (t) => (t.destinations || []).map(locText).join(", ") || "—";
+  const rows = p.tasks.map((it, i) => {
+    const t = it.task;
+    return h("div", { class: "imp-task" },
+      h("label", { class: "check" }, h("input", { type: "checkbox", checked: sel[i], onchange: (e) => { sel[i] = e.target.checked; setGo(); } }),
+        h("span", null, h("b", null, t.name), " ",
+          h("span", { class: "tag" }, TYPE_NAMES[t.type] || t.type), " ",
+          t.enabled ? null : h("span", { class: "tag" }, "Desactivada en Cobian"), " ",
+          it.existing ? h("span", { class: "tag amber" }, "Ya importada: " + it.existing) : null,
+          h("small", null, scheduleText(t)),
+          h("small", null, (t.sources || []).map(locText).join(", ") + " → " + firstDest(t)))),
+      it.warnings && it.warnings.length ? h("ul", { class: "imp-warn" }, it.warnings.map((w) => h("li", null, w))) : null);
+  });
+  setGo();
+  const close = sheet({ title: "Importar de " + p.program, size: "md", body: h("div", null,
+    h("p", { class: "muted", style: { marginTop: 0 } }, p.file + " · " + p.tasks.length + (p.tasks.length === 1 ? " tarea" : " tareas") + ". Revisá cada una antes de importar; los avisos dicen qué no se pudo pasar igual."),
+    h("label", { class: "check" }, h("input", { type: "checkbox", checked: true, onchange: (e) => (opts.disabled = e.target.checked) }),
+      h("span", null, "Importarlas desactivadas", h("small", null, "Así no corren al mismo tiempo que en Cobian. Las activás cuando quieras desde cada tarea."))),
+    h("h3", { style: { marginTop: "16px" } }, "Destino"),
+    h("div", { class: "types" },
+      destOpt("mismo", "El mismo que en Cobian", "Resguardo guarda sus copias en carpetas propias, al lado de las de Cobian."),
+      destOpt("otra", "Otra carpeta para todas", "Por ejemplo, un disco o carpeta de prueba.")),
+    destRow,
+    h("p", { class: "muted small" }, "Las tareas que en Cobian no tenían grupo quedan en el grupo «Cobian». Las contraseñas no se importan."),
+    h("div", { class: "imp-list" }, rows)),
+    foot: [h("button", { class: "btn", onclick: () => close() }, "Cancelar"), go] });
+  go.onclick = async () => {
+    if (opts.dest === "otra" && !opts.destPath) { toast("Elegí la carpeta de destino", true); destIn.focus(); return; }
+    const tasks = p.tasks.filter((_, i) => sel[i]).map((it) => {
+      const t = clone(it.task);
+      if (opts.disabled) t.enabled = false;
+      if (opts.dest === "otra") t.destinations = [{ kind: "local", path: opts.destPath }];
+      if (!t.group) t.group = "Cobian";
+      return t;
+    });
+    const r = await attempt(() => api("import/foreign/apply", { program: p.program, tasks }));
+    if (!r) return;
+    close();
+    toast(r.imported === 1 ? "Se importó 1 tarea" : "Se importaron " + r.imported + " tareas");
+    await reload();
+    S.view = "tareas"; render();
+  };
 }
 
 function renderOptions() {

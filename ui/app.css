@@ -317,3 +317,9 @@ label.check span small { display: block; color: var(--muted); font-size: 12.5px;
 .update-chip { border-color: var(--amber); color: var(--amber); background: var(--amber-soft); }
 .notes { margin: 6px 0 12px; padding-left: 18px; }
 .notes li { margin: 3px 0; }
+
+/* ---------- importar de Cobian ---------- */
+.imp-list { display: grid; gap: 8px; margin-top: 10px; }
+.imp-task { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; background: var(--bg); }
+.imp-task .tag { vertical-align: 1px; }
+.imp-warn { margin: 4px 0 2px 26px; padding: 0 0 0 14px; color: var(--amber); font-size: 12.5px; display: grid; gap: 2px; }

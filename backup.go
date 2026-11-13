@@ -103,6 +103,11 @@ func runClassic(rc *RunCtx) (*BackupRecord, error) {
 		rc.log.Info("Respaldo %s", strings.ToLower(typeLabel(typ)))
 	}
 
+	if task.Encrypt && task.Password == "" && typ != TypeDummy {
+		// Sin esto se haría una copia sin cifrar sin avisar (pasa con tareas importadas).
+		return nil, fmt.Errorf("la tarea tiene el cifrado activado pero no tiene contraseña: ponela en la tarea (Compresión y cifrado) o desactivá el cifrado")
+	}
+
 	filter, err := NewFilter(&task)
 	if err != nil {
 		return nil, err

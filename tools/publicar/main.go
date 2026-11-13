@@ -68,6 +68,25 @@ func main() {
 		}
 		fmt.Printf("%s  %d bytes  %s\n", name, size, sum)
 	}
+	// El instalador de Windows (para instalar la primera vez; las
+	// actualizaciones usan el zip).
+	inst := fmt.Sprintf("Resguardo-%s-Instalador-Windows.exe", version)
+	if _, err := os.Stat(filepath.Join(*dist, inst)); err == nil {
+		size, sum := copyAndHash(filepath.Join(*dist, inst), filepath.Join(desc, inst))
+		copyAndHash(filepath.Join(*dist, inst), filepath.Join(desc, "Resguardo-Instalador-Windows.exe"))
+		fmt.Printf("%s  %d bytes  %s\n", inst, size, sum)
+	} else {
+		fmt.Println("Aviso: no está el instalador de Windows en", *dist)
+	}
+	// Las versiones anteriores quedan en el historial de git; en la carpeta
+	// sólo queda la actual.
+	if old, _ := filepath.Glob(filepath.Join(desc, "Resguardo-*.*.*-*")); len(old) > 0 {
+		for _, f := range old {
+			if !strings.Contains(filepath.Base(f), "-"+version+"-") {
+				_ = os.Remove(f)
+			}
+		}
+	}
 	out, err := updatefmt.Sign(m, seed)
 	check(err)
 	check(os.WriteFile(filepath.Join(*salida, "version.json"), out, 0o644))
