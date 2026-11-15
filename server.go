@@ -130,8 +130,26 @@ func (s *Server) Serve(ln net.Listener) error {
 		w.Header().Set("Cache-Control", "no-store")
 		static.ServeHTTP(w, r)
 	})
-	s.srv = &http.Server{Handler: mux, ReadHeaderTimeout: 20 * time.Second}
+	s.srv = &http.Server{Handler: securityHeaders(mux), ReadHeaderTimeout: 20 * time.Second}
 	return s.srv.Serve(ln)
+}
+
+// securityHeaders: la interfaz sólo carga lo suyo (sin scripts de afuera ni
+// en línea), no se puede meter en un marco de otra página y no filtra la
+// dirección al abrir enlaces.
+func securityHeaders(next http.Handler) http.Handler {
+	const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
+		"font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("Content-Security-Policy", csp)
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("Referrer-Policy", "no-referrer")
+		h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		h.Set("Cross-Origin-Opener-Policy", "same-origin")
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *Server) Shutdown() {
@@ -900,6 +918,10 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 		var err error
 		if b.Data != "" {
 			data, err = base64.StdEncoding.DecodeString(b.Data)
+		} else if st, e := os.Stat(b.Path); e != nil {
+			err = e
+		} else if st.IsDir() || st.Size() > 32<<20 {
+			err = fmt.Errorf("no es una lista de tareas")
 		} else {
 			data, err = os.ReadFile(b.Path)
 			b.Name = filepath.Base(b.Path)

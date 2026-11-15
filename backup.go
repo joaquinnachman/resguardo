@@ -158,7 +158,7 @@ func runClassic(rc *RunCtx) (*BackupRecord, error) {
 	rc.prog.Set("Buscando archivos")
 	entries, warns, err := ScanSources(rc.ctx, srcPaths, ScanOptions{
 		Subdirs: task.IncludeSubdirs, IgnoreEmptyDirs: task.IgnoreEmptyDirs && !(typ == TypeFull && rc.settings.NeverIgnoreEmptyFull),
-		AbsolutePaths: task.AbsolutePaths, FollowReparse: !rc.settings.IgnoreReparsePoints, Filter: filter, ReadRoot: readRoot,
+		AbsolutePaths: task.AbsolutePaths, ContentsOnly: isContentsOnly(task), FollowReparse: !rc.settings.IgnoreReparsePoints, Filter: filter, ReadRoot: readRoot,
 		OnProgress: func(n int, b int64) { rc.prog.Set(fmt.Sprintf("Buscando archivos (%d)", n)) },
 	}, rc.log)
 	if err != nil {
@@ -219,11 +219,11 @@ func runClassic(rc *RunCtx) (*BackupRecord, error) {
 		rc.log.Info("No hay cambios desde el último respaldo: no se crea un respaldo vacío")
 		if task.Mirror && !task.Separated && (task.Compression == "" || task.Compression == "ninguna") {
 			// Puede que sólo se hayan borrado archivos: el espejo igual tiene que limpiar.
-			for _, dest := range task.Destinations {
+			for di, dest := range task.Destinations {
 				if rc.ctx.Err() != nil {
 					break
 				}
-				if err := rc.mirrorOnly(dest, allFiles, dirs, tops); err != nil {
+				if err := rc.mirrorOnly(di, dest, allFiles, dirs, tops); err != nil {
 					rc.fail("Destino %s: %v", describeLocation(dest), err)
 				}
 			}
@@ -383,6 +383,49 @@ func onlyMatch(only []string, name string) bool {
 	return false
 }
 
+func absDur(d time.Duration) time.Duration {
+	if d < 0 {
+		return -d
+	}
+	return d
+}
+
+// isContentsOnly: modo directo con un solo origen que se copia sin su carpeta.
+func isContentsOnly(t Task) bool {
+	return isDirect(t) && t.ContentsOnly && len(t.Sources) == 1 && !t.AbsolutePaths && !t.Sources[0].ForceFile
+}
+
+// managedTops: lo que Resguardo copió antes en el primer nivel de este
+// destino (según el historial). En el modo "sólo el contenido" el espejo
+// puede quitar esas carpetas cuando desaparecen del origen; lo demás que haya
+// en el destino (copias de otro programa, cosas tuyas) no se toca.
+func (rc *RunCtx) managedTops(di int) map[string]bool {
+	out := map[string]bool{}
+	if rc.store == nil || !isContentsOnly(rc.task) {
+		return out
+	}
+	for _, r := range rc.store.History(rc.task.ID) {
+		for _, o := range r.Outputs {
+			if o.Dest == di {
+				for _, t := range o.Only {
+					out[strings.ToLower(t)] = true
+				}
+			}
+		}
+	}
+	return out
+}
+
+// sourceReadable: el origen único se puede leer y tiene algo adentro (si no,
+// el espejo no quita nada del primer nivel: puede ser un disco desconectado).
+func (rc *RunCtx) sourceReadable() bool {
+	if !isContentsOnly(rc.task) || rc.task.Sources[0].Kind != "" && rc.task.Sources[0].Kind != "local" {
+		return false
+	}
+	ents, err := os.ReadDir(expandTokens(rc.task.Sources[0].Path, &rc.task))
+	return err == nil && len(ents) > 0
+}
+
 func sortedTops(tops map[string]bool) []string {
 	out := make([]string, 0, len(tops))
 	for t := range tops {
@@ -393,7 +436,7 @@ func sortedTops(tops map[string]bool) []string {
 }
 
 // mirrorOnly corre sólo la limpieza del espejo (cuando no hubo nada para copiar).
-func (rc *RunCtx) mirrorOnly(dest Location, all map[string]Entry, dirs, tops map[string]bool) error {
+func (rc *RunCtx) mirrorOnly(di int, dest Location, all map[string]Entry, dirs, tops map[string]bool) error {
 	fsys, base, err := openFS(dest, rc.settings)
 	if err != nil {
 		return err
@@ -407,7 +450,7 @@ func (rc *RunCtx) mirrorOnly(dest Location, all map[string]Entry, dirs, tops map
 	if _, err := fsys.Stat(root); err != nil {
 		return nil // todavía no hay copia
 	}
-	rc.mirrorClean(fsys, root, all, dirs, tops)
+	rc.mirrorClean(fsys, root, all, dirs, tops, di)
 	return nil
 }
 
@@ -473,7 +516,9 @@ func (rc *RunCtx) toDestination(di int, dest Location, typ, tsName string, selec
 				markFail(e, rc.copyEncrypted(fsys, e.Abs, target+".rsg", info))
 			} else {
 				if !task.Separated {
-					if dst, err := fsys.Stat(target); err == nil && dst.Size() == e.Size && dst.ModTime().Unix() == e.MTime.Unix() {
+					// Igual tamaño y fecha (con 2 s de tolerancia, por discos FAT/exFAT
+					// y copias hechas por otros programas): no hace falta copiarlo.
+					if dst, err := fsys.Stat(target); err == nil && dst.Size() == e.Size && absDur(dst.ModTime().Sub(e.MTime)) <= 2*time.Second {
 						rc.prog.addBytes(e.Size)
 						rc.prog.FileDone()
 						continue
@@ -493,7 +538,7 @@ func (rc *RunCtx) toDestination(di int, dest Location, typ, tsName string, selec
 			rc.prog.FileDone()
 		}
 		if task.Mirror && !task.Separated && rc.ctx.Err() == nil {
-			rc.mirrorClean(fsys, root, all, dirs, tops)
+			rc.mirrorClean(fsys, root, all, dirs, tops, di)
 		}
 		return []Output{{Dest: di, Path: root, Kind: "carpeta", Only: only}}, nil
 
@@ -687,7 +732,7 @@ func (rc *RunCtx) copyEncrypted(fsys FS, src, target string, info fs.FileInfo) e
 // Sólo trabaja dentro de las carpetas de origen que existen ahora (tops): lo
 // que está suelto en el destino, y la copia de un origen que no se encontró
 // (un disco desconectado, por ejemplo), no se toca nunca.
-func (rc *RunCtx) mirrorClean(fsys FS, root string, all map[string]Entry, dirs, tops map[string]bool) {
+func (rc *RunCtx) mirrorClean(fsys FS, root string, all map[string]Entry, dirs, tops map[string]bool, di int) {
 	rc.prog.Set("Espejo: limpiando archivos borrados en el origen")
 	keepDirs := map[string]bool{}
 	for d := range dirs {
@@ -712,6 +757,12 @@ func (rc *RunCtx) mirrorClean(fsys FS, root string, all map[string]Entry, dirs, 
 		}
 	}
 	removed := 0
+	managed := map[string]bool{}
+	sourceOK := false
+	if isContentsOnly(rc.task) {
+		managed = rc.managedTops(di)
+		sourceOK = rc.sourceReadable()
+	}
 	var walk func(dir, rel string)
 	walk = func(dir, rel string) {
 		entries, err := fsys.ReadDir(dir)
@@ -725,12 +776,18 @@ func (rc *RunCtx) mirrorClean(fsys FS, root string, all map[string]Entry, dirs, 
 			}
 			p := fsys.Join(dir, e.Name())
 			if rel == "" {
-				if isDir, ok := tops[r]; ok && isDir && e.IsDir() {
-					walk(p, r)
+				if isDir, ok := tops[r]; ok {
+					if isDir && e.IsDir() {
+						walk(p, r)
+					}
+					continue
 				}
-				continue
-			}
-			if e.IsDir() {
+				// Primer nivel que ya no está en el origen: sólo se quita si lo
+				// había copiado Resguardo y el origen se pudo leer.
+				if !managed[strings.ToLower(r)] || !sourceOK || strings.HasPrefix(e.Name(), "_Espejo seguro (") {
+					continue
+				}
+			} else if e.IsDir() {
 				if keepDirs[r] {
 					walk(p, r)
 					continue

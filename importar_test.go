@@ -226,3 +226,92 @@ func TestImportNotAList(t *testing.T) {
 		t.Fatal("tenía que fallar")
 	}
 }
+
+// Como la lista real de Joaquín (guardada en UTF-8 por el Bloc de notas),
+// con otros nombres.
+const cobian11Real = `{11//
+Id={6FAB0485-EAC4-478E-9B0B-406E3FAA5C56}
+Name=BK Total de E:
+Group=
+Enabled=true
+Include subdirectories=true
+Create separated backups=false
+Use attributes=true
+Use VSC=false
+Backup type=1
+Priority=0
+Source="1,E:\"
+Destination="1,""H:\00 - ESTUDIO\00 - MUSICA\2026""","1,""F:\00 - ESTUDIO\00 - MUSICA\2026"""
+Schedule type=2
+Select days of the week=false
+Order of Day of the week=1
+Day of the week=1,2,3,4,5,6,7
+Date/Time=0100000011100110000001000101000000111010001010110100100010111011
+Day of the month=1
+Month=1
+Timer=180
+Timer from=0100000011100110000001000100000000000000000000000000000000000000
+Timer to=0100000011100110000001000101111111111111111001111011101000110111
+Full copies=0
+Differental copies=0
+One full every=0
+Use fixed day=false
+Fixed day=1
+Compression=0
+Compress individually=false
+Split=0
+Custom size=4300000000
+Comment=Cobian Backup 11 Gravity
+Encryption=0
+Passphrase=AAAA
+Exclusions="1,E:\SteamLibrary,0,0000000000000000000000000000000000000000000000000000000000000000","1,""E:\MI MUSICA"",0,0000000000000000000000000000000000000000000000000000000000000000","3,*.bak,0,0000000000000000000000000000000000000000000000000000000000000000","3,"" *peak"",0,0000000000000000000000000000000000000000000000000000000000000000"
+Inclusions=
+Pre backup events=
+Post backup events=
+Abort if pre-event fails=false
+Abort if post-event fails=false
+Mirror=false
+Absolute paths=false
+Always create top directory=false
+Clear archive attribute=true
+Include backup type=false
+Delete empty directories=false
+Impersonate=false
+Abort if impersonation fails=false
+Run as User name=
+Run as Domain=.
+Run as Password=AAAA
+//11}
+`
+
+func TestImportCobian11Real(t *testing.T) {
+	p, err := parseForeignList("lista.lst", []byte(cobian11Real))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := p.Tasks[0].Task
+	if a.Name != "BK Total de E:" || a.Type != TypeIncr || a.Separated || !a.Direct || !a.ContentsOnly || a.TopParentDir || a.TypeInName {
+		t.Fatalf("%+v", a)
+	}
+	if len(a.Sources) != 1 || a.Sources[0].Path != `E:\` || len(a.Destinations) != 2 || a.Destinations[1].Path != `F:\00 - ESTUDIO\00 - MUSICA\2026` {
+		t.Fatalf("%+v %+v", a.Sources, a.Destinations)
+	}
+	if a.Schedule.Kind != "diario" || a.Schedule.Time != "12:10" || a.Schedule.WindowFrom != "" {
+		t.Fatalf("%+v", a.Schedule)
+	}
+	want := []FilterItem{{Kind: "carpeta", Value: `E:\SteamLibrary`}, {Kind: "carpeta", Value: `E:\MI MUSICA`}, {Kind: "mascara", Value: "*.bak"}, {Kind: "mascara", Value: "*peak"}}
+	if len(a.Exclude) != len(want) {
+		t.Fatalf("%+v", a.Exclude)
+	}
+	for i := range want {
+		if a.Exclude[i] != want[i] {
+			t.Fatalf("exclusión %d: %+v", i, a.Exclude[i])
+		}
+	}
+	if a.UseArchiveAttr || a.Encrypt || a.RunAs.Enabled || a.Comment != "" || a.FullCopiesToKeep != 0 {
+		t.Fatalf("%+v", a)
+	}
+	if w := strings.Join(p.Tasks[0].Warnings, "\n"); !strings.Contains(w, "atributo de archivo") || strings.Contains(w, "cifrada") {
+		t.Fatalf("avisos: %s", w)
+	}
+}

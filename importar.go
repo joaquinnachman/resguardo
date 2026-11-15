@@ -437,6 +437,7 @@ func convertCobian11(l kvList) ImportedTask {
 	t.Enabled = l.flag(true, "Enabled")
 	t.IncludeSubdirs = l.flag(true, "Include subdirectories")
 	t.Separated = l.flag(true, "Create separated backups")
+	alwaysTop := l.flag(false, "Always create top directory", "Always create top parent directory")
 	t.UseVSS = l.flag(false, "Use VSC", "Use Volume Shadow Copy", "Use VSS")
 	if l.flag(false, "Use attributes", "Use file attributes", "Use archive attribute") {
 		warn("En Cobian detectaba los cambios con el atributo de archivo. Resguardo compara fecha y tamaño, así los dos programas no se pisan.")
@@ -473,6 +474,7 @@ func convertCobian11(l kvList) ImportedTask {
 	if len(t.Destinations) == 0 && t.Type != TypeDummy {
 		warn("No tiene destinos que se puedan importar.")
 	}
+	cobianLayout(&t, alwaysTop)
 
 	t.Schedule = cobian11Schedule(l, &w)
 
@@ -551,11 +553,29 @@ func convertCobian11(l kvList) ImportedTask {
 		t.RunAs = RunAs{Enabled: true, User: l.str("Run as User name"), Domain: l.str("Run as Domain"), CancelIfFails: l.flag(false, "Abort if impersonation fails")}
 		warn("Corría como otro usuario (%s). La contraseña no se importa: ponela en la tarea.", t.RunAs.User)
 	}
+	// Como en Cobian: se copia todo, también los cachés de los DAW (se puede
+	// activar "Saltear cachés de DAW" en Filtros).
+	t.Projects.SmartExclusions = false
 	fillSlices(&t)
 	if w == nil {
 		w = []string{}
 	}
 	return ImportedTask{Task: t, Warnings: w}
+}
+
+// cobianLayout: cómo quedan las carpetas en el destino. Cuando Cobian pisa
+// siempre la misma copia y la tarea tiene un solo origen, copia lo que hay
+// adentro del origen directo en el destino (salvo con "Always create top
+// directory"); con varios orígenes, cada uno va en su carpeta. Resguardo hace
+// lo mismo con el modo "Directo en el destino", así sigue actualizando la
+// copia que ya hizo Cobian en vez de empezar otra.
+func cobianLayout(t *Task, alwaysTop bool) {
+	t.TopParentDir = false
+	if t.Separated {
+		return
+	}
+	t.Direct = true
+	t.ContentsOnly = !alwaysTop && len(t.Sources) == 1 && !t.Sources[0].ForceFile
 }
 
 // cobianLocations: "tipo,ruta" con tipo 0 = archivo, 1 = carpeta, 2 = FTP.
@@ -627,8 +647,9 @@ func urlLocation(s string) (Location, bool) {
 	return l, true
 }
 
-// cobianFilters: "tipo,valor,..." con tipo 0 = archivo, 1 = carpeta, 2 = máscara.
-// Los filtros por tamaño o fecha no tienen equivalente directo.
+// cobianFilters: "tipo,valor,tamaño,fecha". En listas reales: 1 = carpeta,
+// 3 = máscara (como FOFilterKind en Cobian Reflector). Los demás tipos se
+// deducen del valor; los de tamaño o fecha no tienen equivalente directo.
 func cobianFilters(v, what string, w *[]string, t *Task) []FilterItem {
 	var out []FilterItem
 	for _, it := range cobianItems(v) {
@@ -643,8 +664,10 @@ func cobianFilters(v, what string, w *[]string, t *Task) []FilterItem {
 			continue
 		}
 		switch {
-		case strings.ContainsAny(val, "*?") || !strings.ContainsAny(val, `\/`):
+		case kind == "3" || strings.ContainsAny(val, "*?") || !strings.ContainsAny(val, `\/`):
 			out = append(out, FilterItem{Kind: "mascara", Value: val})
+		case kind == "1":
+			out = append(out, FilterItem{Kind: "carpeta", Value: strings.TrimRight(val, `\/`)})
 		case kind == "0":
 			out = append(out, FilterItem{Kind: "archivo", Value: val})
 		case kind == "1":
@@ -686,6 +709,9 @@ func cobian11Schedule(l kvList, w *[]string) Schedule {
 		if len(s.Weekdays) == 0 {
 			s.Weekdays = []int{1}
 			*w = append(*w, "No se pudieron leer los días de la semana: quedó los lunes.")
+		}
+		if len(s.Weekdays) == 7 {
+			s.Kind = "diario" // todos los días
 		}
 	case 3:
 		s.Kind = "mensual"
@@ -859,6 +885,11 @@ func convertReflector(d rfDoc, l kvList) ImportedTask {
 	}
 	t.Sources = locs("TaskSource", "origen")
 	t.Destinations = locs("TaskDestination", "destino")
+	alwaysTop := false
+	if v, ok := l.findKey("create", "top"); ok {
+		alwaysTop = strings.EqualFold(strings.TrimSpace(v), "true")
+	}
+	cobianLayout(&t, alwaysTop)
 	if len(t.Sources) == 0 {
 		warn("No tiene orígenes que se puedan importar.")
 	}
@@ -969,6 +1000,9 @@ func convertReflector(d rfDoc, l kvList) ImportedTask {
 			warn("Tenía %d acción(es) %s del respaldo que no se importan; agregalas en Eventos si las necesitás.", n, when)
 		}
 	}
+	// Como en Cobian: se copia todo, también los cachés de los DAW (se puede
+	// activar "Saltear cachés de DAW" en Filtros).
+	t.Projects.SmartExclusions = false
 	fillSlices(&t)
 	if w == nil {
 		w = []string{}

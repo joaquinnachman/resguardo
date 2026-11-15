@@ -9,7 +9,7 @@ import (
 const AppName = "Resguardo"
 
 // AppVersion es var (y no const) para poder compilar versiones de prueba con -ldflags -X.
-var AppVersion = "1.2.0"
+var AppVersion = "1.2.1"
 
 // ---------- Tareas ----------
 
@@ -114,6 +114,10 @@ type Task struct {
 	IncludeSubdirs bool `json:"includeSubdirs"`
 	Separated      bool `json:"separated"`
 	Direct         bool `json:"direct"` // sin carpeta de la tarea: cada origen queda tal cual dentro del destino
+	// ContentsOnly (con Direct y un solo origen): lo que hay adentro del origen
+	// va directo en el destino, sin crear la carpeta del origen (como Cobian
+	// sin "crear el directorio superior").
+	ContentsOnly   bool `json:"contentsOnly"`
 	UseArchiveAttr bool `json:"useArchiveAttr"`
 	UseVSS         bool `json:"useVSS"`
 

@@ -242,6 +242,7 @@ type ScanOptions struct {
 	Subdirs         bool
 	IgnoreEmptyDirs bool
 	AbsolutePaths   bool
+	ContentsOnly    bool // un solo origen (carpeta): su contenido va directo, sin la carpeta
 	FollowReparse   bool
 	Filter          *Filter
 	ReadRoot        func(src string) string // para VSS: ruta de lectura alternativa
@@ -314,7 +315,10 @@ func ScanSources(ctx context.Context, sources []string, opt ScanOptions, log *Lo
 				name := d.Name()
 				pRead := filepath.Join(dirRead, name)
 				pReal := filepath.Join(dirReal, name)
-				r := rel + "/" + name
+				r := name
+				if rel != "" {
+					r = rel + "/" + name
+				}
 				isLink := d.Type()&fs.ModeSymlink != 0
 				var fi fs.FileInfo
 				if isLink {
@@ -361,7 +365,11 @@ func ScanSources(ctx context.Context, sources []string, opt ScanOptions, log *Lo
 			}
 			return count, nil
 		}
-		out = append(out, Entry{Abs: readRoot, Real: src, Rel: filepath.ToSlash(top), Dir: true, MTime: info.ModTime(), Src: si, Mode: info.Mode()})
+		if opt.ContentsOnly && len(sources) == 1 && !opt.AbsolutePaths {
+			top = "" // el contenido va directo en el destino
+		} else {
+			out = append(out, Entry{Abs: readRoot, Real: src, Rel: filepath.ToSlash(top), Dir: true, MTime: info.ModTime(), Src: si, Mode: info.Mode()})
+		}
 		if _, err := walk(readRoot, src, filepath.ToSlash(top)); err != nil {
 			return nil, warnings, err
 		}

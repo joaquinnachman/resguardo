@@ -938,7 +938,13 @@ function layoutPreview(t) {
   if (t.topParentDir) p += sep + t.name;
   if (t.separated) p += sep + t.name + " AAAA-MM-DD HH;MM;SS" + (t.typeInName ? " (" + (TYPE_NAMES[t.type] || t.type) + ")" : "");
   else if (!t.direct || !["", "ninguna", "individual"].includes(t.compression || "")) p += sep + t.name;
-  return h("p", { class: "muted small" }, "Va a quedar así: ", h("code", null, p + sep + (baseName(src.path) || "…")));
+  const inner = isContentsOnlyTask(t) ? "(lo que hay adentro de " + (baseName(src.path) || "el origen") + ")" : (baseName(src.path) || "…");
+  return h("p", { class: "muted small" }, "Va a quedar así: ", h("code", null, p + sep + inner));
+}
+
+function isContentsOnlyTask(t) {
+  const s = t.sources || [];
+  return isDirectTask(t) && !!t.contentsOnly && s.length === 1 && !s[0].forceFile && !t.absolutePaths && ["", "ninguna", "individual"].includes(t.compression || "");
 }
 
 function editorPane(t, tab, redraw) {
@@ -971,6 +977,7 @@ function editorPane(t, tab, redraw) {
             layoutOpt("fecha", "Una carpeta nueva cada vez", "Con la fecha y la hora en el nombre. Se van guardando varias copias."),
             layoutOpt("tarea", "Una carpeta con el nombre de la tarea", "Cada respaldo actualiza esa misma copia."),
             layoutOpt("directo", "Directo en el destino", "Sin carpetas extra: cada carpeta de origen queda tal cual, una al lado de la otra.")),
+          isDirectTask(t) && (t.sources || []).length === 1 ? fCheck(t, "contentsOnly", "Copiar sólo lo que hay adentro, sin crear la carpeta del origen", "Así lo hace Cobian: sirve para seguir actualizando una copia que ya tenés.", redraw) : null,
           layoutPreview(t),
           isDirectTask(t) && !["", "ninguna", "individual"].includes(t.compression || "") ? h("div", { class: "note-box" }, "Con compresión en un solo archivo, el archivo lleva el nombre de la tarea (Compresión → Sin comprimir para tener las carpetas sueltas).") : null,
           isDirectTask(t) && !t.mirror ? h("p", { class: "muted small" }, "Para que lo que borrás en el origen también se vaya del destino, activá Espejo en Avanzado. Lo que quita no se borra: se aparta en “_Espejo seguro”.") : null,
@@ -1340,7 +1347,8 @@ function importPreviewDialog(p) {
           t.enabled ? null : h("span", { class: "tag" }, "Desactivada en Cobian"), " ",
           it.existing ? h("span", { class: "tag amber" }, "Ya importada: " + it.existing) : null,
           h("small", null, scheduleText(t)),
-          h("small", null, (t.sources || []).map(locText).join(", ") + " → " + firstDest(t)))),
+          h("small", null, (t.sources || []).map(locText).join(", ") + " → " + firstDest(t)),
+          t.contentsOnly ? h("small", null, "Como en Cobian: lo que hay adentro del origen va directo en el destino.") : null)),
       it.warnings && it.warnings.length ? h("ul", { class: "imp-warn" }, it.warnings.map((w) => h("li", null, w))) : null);
   });
   setGo();
@@ -1350,7 +1358,7 @@ function importPreviewDialog(p) {
       h("span", null, "Importarlas desactivadas", h("small", null, "Así no corren al mismo tiempo que en Cobian. Las activás cuando quieras desde cada tarea."))),
     h("h3", { style: { marginTop: "16px" } }, "Destino"),
     h("div", { class: "types" },
-      destOpt("mismo", "El mismo que en Cobian", "Resguardo guarda sus copias en carpetas propias, al lado de las de Cobian."),
+      destOpt("mismo", "El mismo que en Cobian", "Las tareas que en Cobian actualizan siempre la misma copia siguen con esa copia: Resguardo sólo copia lo que cambió."),
       destOpt("otra", "Otra carpeta para todas", "Por ejemplo, un disco o carpeta de prueba.")),
     destRow,
     h("p", { class: "muted small" }, "Las tareas que en Cobian no tenían grupo quedan en el grupo «Cobian». Las contraseñas no se importan."),

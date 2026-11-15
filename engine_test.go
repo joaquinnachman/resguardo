@@ -603,3 +603,58 @@ func TestDirectMirror(t *testing.T) {
 		t.Fatal("se borró algo que no era de la tarea")
 	}
 }
+
+func TestContentsOnlyMirror(t *testing.T) {
+	store, log, e, root := testEnv(t)
+	base := time.Now().Add(-time.Hour)
+	src := filepath.Join(root, "E")
+	writeFile(t, filepath.Join(src, "Tema A", "Tema A.als"), []byte("a"), base)
+	writeFile(t, filepath.Join(src, "Tema B", "Tema B.cpr"), []byte("b"), base)
+	writeFile(t, filepath.Join(src, "notas.txt"), []byte("notas"), base)
+	dst := filepath.Join(root, "2026")
+	// Lo que ya había copiado otro programa (Cobian) y algo que no es del origen.
+	writeFile(t, filepath.Join(dst, "Tema A", "Tema A.als"), []byte("X"), base.Add(time.Second)) // mismo tamaño y fecha (±1 s): no se recopia
+	writeFile(t, filepath.Join(dst, "Viejo de Cobian", "x.wav"), []byte("x"), base)
+
+	task := NewTask()
+	task.Name = "BK de E"
+	task.Type = TypeIncr
+	task.Separated = false
+	task.Direct = true
+	task.ContentsOnly = true
+	task.Mirror = true
+	task.Sources = []Location{{Path: src}}
+	task.Destinations = []Location{{Path: dst}}
+	store.PutTask(task)
+	run(t, e, task.ID, false, "")
+
+	got := strings.Join(keys(treeOf(t, dst)), "|")
+	if got != "Tema A/Tema A.als|Tema B/Tema B.cpr|Viejo de Cobian/x.wav|notas.txt" {
+		dumpLog(t, log)
+		t.Fatalf("destino: %s", got)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dst, "Tema A", "Tema A.als")); string(b) != "X" {
+		t.Fatal("se volvió a copiar un archivo igual")
+	}
+
+	// Se borra una carpeta del origen: el espejo la aparta; lo de Cobian queda.
+	os.RemoveAll(filepath.Join(src, "Tema B"))
+	run(t, e, task.ID, false, "")
+	if _, err := os.Stat(filepath.Join(dst, "Tema B")); err == nil {
+		dumpLog(t, log)
+		t.Fatal("el espejo no quitó la carpeta borrada")
+	}
+	if m, _ := filepath.Glob(filepath.Join(dst, "_Espejo seguro (BK de E)", "*", "Tema B", "Tema B.cpr")); len(m) != 1 {
+		t.Fatal("no quedó apartada")
+	}
+	if _, err := os.Stat(filepath.Join(dst, "Viejo de Cobian", "x.wav")); err != nil {
+		t.Fatal("se tocó algo que no había copiado Resguardo")
+	}
+
+	// Disco desconectado: no se quita nada.
+	os.Rename(src, src+"-desconectado")
+	run(t, e, task.ID, false, "")
+	if _, err := os.Stat(filepath.Join(dst, "Tema A", "Tema A.als")); err != nil {
+		t.Fatal("con el origen desconectado se borró la copia")
+	}
+}
