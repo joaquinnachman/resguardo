@@ -1,23 +1,22 @@
 {
   "datos": {
     "app": "Resguardo",
-    "version": "1.2.2",
+    "version": "1.2.3",
     "date": "2026-11-22",
     "notes": [
-      "Proyectos de DAW: nueva forma \"Cada carpeta tal cual\". Tus proyectos quedan en el destino igual que en el origen y se abren directo, sin la carpeta \"Actual\"; lo que se fue reemplazando va aparte, en \"_Resguardo versiones\". Se elige en Editar → Música → Cómo quedan en el destino.",
-      "Nueva opción \"Copiar toda la carpeta\" en las tareas de proyectos: también copia lo que no está dentro de un proyecto (textos, PDFs, referencias, carpetas sueltas), tal cual.",
-      "Las tareas nuevas copian las carpetas directo en el destino, sin carpetas extra con fecha o con el nombre de la tarea."
+      "Busca actualizaciones también cada vez que abrís la ventana de Resguardo, y cada hora (antes era cada 6 horas), así las versiones nuevas llegan enseguida.",
+      "Incluye lo de la 1.2.2: proyectos con cada carpeta tal cual (sin \"Actual\") y la opción \"Copiar toda la carpeta\"."
     ],
     "windows": {
-      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.2.2-Windows.zip",
-      "size": 4855450,
-      "sha256": "3b488669be7e1a11b3ef4179641691c6b6358ce5b49cfd3a0f6b8894179169b8"
+      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.2.3-Windows.zip",
+      "size": 4857635,
+      "sha256": "205712835a28134e94c01de268a2497661e2c8a9d42638b5ac109497f40471bb"
     },
     "mac": {
-      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.2.2-Mac.zip",
-      "size": 9054911,
-      "sha256": "6aa2d57f3f793435a30e715f592c82057b522f1313845b3dfeacbb7ca9126519"
+      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.2.3-Mac.zip",
+      "size": 9056264,
+      "sha256": "17425138db3f4ac05b8a04decfce4c2e6ed3ec0f7aebf8c203f4e785f790fa56"
     }
   },
-  "firma": "5oxWw16muwwxUqiwMqyrPQ00F0j26C6JL/EmQQcm08Vhk0+A/cPqsBAzZJV5ByYTXtxeVzFu0v0yl7FiUVsCAQ=="
+  "firma": "z0c0WIq230mQ1oRJXi3n8s++DTNBy8GcHeF+DPRdpkyF8ZFBuN5+CBJmJw9KFQcuniRICw5R7bOv4Z7bxnJyDA=="
 }

@@ -331,6 +331,9 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 		_ = readBody(r, &b)
 		s.upd.Check(b.Install)
 		writeJSON(w, s.upd.Status())
+	case "update/opened":
+		s.upd.Opened()
+		writeJSON(w, map[string]bool{"ok": true})
 	case "update/news":
 		if r.Method == http.MethodPost {
 			s.upd.AckNews()

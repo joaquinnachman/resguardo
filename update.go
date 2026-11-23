@@ -26,7 +26,10 @@ import (
 
 const updateManifestURL = "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/version.json"
 const updatePublicKey = "6x1ZslBELo1zBI+Hsmoh4hTVGWMvTXVbx8cNxTUZ4Vc="
-const updateEvery = 6 * time.Hour
+const (
+	updateEvery  = time.Hour        // búsqueda periódica
+	updateOnOpen = 10 * time.Minute // al abrir la ventana, si la última búsqueda es más vieja que esto
+)
 
 func manifestURL() string {
 	// Sólo para pruebas: igual se exige la firma, así que no abre ninguna puerta.
@@ -89,11 +92,12 @@ type Updater struct {
 	file string // zip descargado y verificado
 	want bool   // pidieron instalar ahora
 	kick chan bool
-	skip string // versión que falló al instalarse
+	soon chan struct{} // se abrió la ventana
+	skip string        // versión que falló al instalarse
 }
 
 func NewUpdater(app *App) *Updater {
-	u := &Updater{app: app, kick: make(chan bool, 1)}
+	u := &Updater{app: app, kick: make(chan bool, 1), soon: make(chan struct{}, 1)}
 	u.st.Current = AppVersion
 	u.st.CanSelf, u.st.Why = canSelfUpdate()
 	if l, ok := readLastUpdate(); ok && l.Estado == "fallida" {
@@ -115,6 +119,15 @@ func (u *Updater) set(fn func(s *UpdateStatus)) {
 	fn(&u.st)
 	u.mu.Unlock()
 	u.app.engine.notify()
+}
+
+// Opened: se abrió (o se volvió a mirar) la ventana; si hace rato que no se
+// busca, se busca ahora (respetando "buscar solas").
+func (u *Updater) Opened() {
+	select {
+	case u.soon <- struct{}{}:
+	default:
+	}
 }
 
 // Check pide una búsqueda ya (install=true: además instalar en cuanto se pueda).
@@ -142,17 +155,20 @@ func (u *Updater) Run() {
 	go u.cleanup()
 	first := time.After(20 * time.Second)
 	for {
-		manual := false
+		manual, opened := false, false
 		select {
 		case <-first:
 		case manual = <-u.kick:
+		case <-u.soon:
+			opened = true
 		case <-time.After(time.Minute):
 		case <-u.app.done:
 			return
 		}
 		s := u.app.store.GetSettings()
 		st := u.Status()
-		if manual || (s.UpdateAuto && time.Since(st.Checked) >= updateEvery) {
+		since := time.Since(st.Checked)
+		if manual || (s.UpdateAuto && (since >= updateEvery || (opened && since >= updateOnOpen))) {
 			u.check(manual)
 		}
 		u.maybeInstall(s)

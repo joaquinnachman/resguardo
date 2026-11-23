@@ -1,4 +1,4 @@
-RESGUARDO 1.2.2 — respaldos para músicos y productores
+RESGUARDO 1.2.3 — respaldos para músicos y productores
 =====================================================
 
 Hace todo lo que hace Cobian Backup (tareas completas, incrementales y
@@ -49,11 +49,12 @@ MAC (Apple Silicon e Intel)
 
 ACTUALIZACIONES
 ---------------
-Desde la versión 1.1.0, Resguardo busca solo si hay una versión nueva (al
-abrirse y cada 6 horas), la baja, comprueba que sea auténtica y la instala
+Resguardo busca solo si hay una versión nueva (al abrirse, al abrir su
+ventana y cada hora), la baja, comprueba que sea auténtica y la instala
 cuando no hay un respaldo en curso ni un DAW abierto. Se reinicia en unos
 segundos y vuelve solo; si la versión nueva no arrancara, vuelve a la
-anterior. Se configura en Opciones > General > Actualizaciones.
+anterior. Para buscar en el momento: Opciones > General > Actualizaciones >
+Buscar ahora.
 
 Instalado con el instalador, se actualiza sin pedir nada. Si usás el
 Resguardo.exe suelto, tiene que estar en una carpeta donde puedas escribir

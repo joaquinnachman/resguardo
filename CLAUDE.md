@@ -27,7 +27,7 @@ El instalador de Windows sale de `installer/resguardo.nsi` con NSIS (`apt-get in
 Reglas:
 - La clave privada de firma (Ed25519) NUNCA va al repositorio. Está en el documento `claude/resguardo.md` del proyecto "Nerd" de Joaquín. La pública está en `update.go`.
 - Nunca volver a publicar una versión con el mismo número y otros archivos: siempre un número nuevo.
-- La app consulta `https://raw.githubusercontent.com/joaquinnachman/resguardo/main/version.json` al abrirse y cada 6 horas. La instala cuando no hay respaldos en curso ni un DAW abierto, y si la versión nueva no arranca en 45 s vuelve sola a la anterior.
+- La app consulta `https://raw.githubusercontent.com/joaquinnachman/resguardo/main/version.json` al abrirse, al abrir la ventana (si la última búsqueda tiene más de 10 min) y cada hora. La instala cuando no hay respaldos en curso ni un DAW abierto, y si la versión nueva no arranca en 45 s vuelve sola a la anterior.
 - Probar actualizaciones sin publicar: variable de entorno `RESGUARDO_ACTUALIZACIONES` con otra dirección de `version.json` (igual se exige la firma).
 - Importar de Cobian (`importar.go`): formato de Cobian 11 confirmado con la lista real de Joaquín (prueba `TestImportCobian11Real`, con nombres cambiados): filtros 1 = carpeta y 3 = máscara; "Create separated backups=false" con un origen y "Always create top directory=false" = lo de adentro del origen directo en el destino (modo directo + `contentsOnly`). Falta ver: `cbSettings.ini` (opciones generales), eventos, FTP y el orden de los días cuando no son los 7.
 - La interfaz no puede tener scripts en línea (CSP `script-src 'self'` en `securityHeaders`).

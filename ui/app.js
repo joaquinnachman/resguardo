@@ -193,6 +193,16 @@ async function boot() {
   }
   setInterval(poll, 1000);
   showUpdateNews();
+  // Buscar actualizaciones al abrir la ventana y al volver a ella.
+  let lastAsk = 0;
+  const askUpdate = () => {
+    if (document.visibilityState !== "visible" || Date.now() - lastAsk < 5 * 60000) return;
+    lastAsk = Date.now();
+    api("update/opened", {}).catch(() => {});
+  };
+  askUpdate();
+  document.addEventListener("visibilitychange", askUpdate);
+  window.addEventListener("focus", askUpdate);
 }
 
 async function showUpdateNews() {
@@ -1439,7 +1449,7 @@ function updateBlock(s) {
   const status = h("p", { class: "muted", id: "upd-status" }, updateText(u));
   const newer = ["disponible", "lista", "esperando"].includes(u.state);
   return h("div", { class: "block" }, h("h3", null, "Actualizaciones"),
-    fCheck(s, "updateAuto", "Buscar versiones nuevas solo", "Revisa al abrir Resguardo y cada 6 horas."),
+    fCheck(s, "updateAuto", "Buscar versiones nuevas solo", "Revisa al abrir Resguardo o su ventana, y cada hora."),
     fCheck(s, "updateInstall", "Bajarlas e instalarlas solas", "Se instalan cuando no hay un respaldo en curso ni un DAW abierto. Resguardo se reinicia en unos segundos y vuelve solo."),
     !u.canSelf && u.why ? h("p", { class: "note-box" }, u.why) : null,
     status,

@@ -9,7 +9,7 @@ import (
 const AppName = "Resguardo"
 
 // AppVersion es var (y no const) para poder compilar versiones de prueba con -ldflags -X.
-var AppVersion = "1.2.2"
+var AppVersion = "1.2.3"
 
 // ---------- Tareas ----------
 
