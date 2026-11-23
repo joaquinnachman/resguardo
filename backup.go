@@ -395,7 +395,20 @@ func absDur(d time.Duration) time.Duration {
 
 // isContentsOnly: modo directo con un solo origen que se copia sin su carpeta.
 func isContentsOnly(t Task) bool {
-	return isDirect(t) && t.ContentsOnly && len(t.Sources) == 1 && !t.AbsolutePaths && !t.Sources[0].ForceFile
+	if !isDirect(t) || len(t.Sources) != 1 || t.AbsolutePaths || t.Sources[0].ForceFile {
+		return false
+	}
+	// Un disco entero (E:\) no tiene carpeta propia: siempre se copia lo de
+	// adentro, sin crear una carpeta "E" en el destino.
+	return t.ContentsOnly || sourceIsDriveRoot(t.Sources[0])
+}
+
+func sourceIsDriveRoot(s Location) bool {
+	if s.Kind != "" && s.Kind != "local" {
+		return false
+	}
+	p := strings.TrimPrefix(strings.TrimPrefix(strings.TrimSpace(s.Path), "?D?"), "?F?")
+	return p != "" && isDriveRoot(p)
 }
 
 // managedTops: lo que Resguardo copió antes en el primer nivel de este

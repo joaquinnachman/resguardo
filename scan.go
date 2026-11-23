@@ -332,6 +332,9 @@ func ScanSources(ctx context.Context, sources []string, opt ScanOptions, log *Lo
 				if opt.Filter != nil && !opt.Filter.Allowed(pReal, fi, parentName) {
 					continue
 				}
+				if isDriveRoot(dirReal) && isSystemRootItem(name) {
+					continue // papelera, "System Volume Information", archivo de paginación…
+				}
 				if fi.IsDir() {
 					if isLink && !opt.FollowReparse {
 						continue
@@ -376,3 +379,30 @@ func ScanSources(ctx context.Context, sources []string, opt ScanOptions, log *Lo
 	}
 	return out, warnings, nil
 }
+
+// isDriveRoot: la ruta es la raíz de un disco (E:\, /Volumes/Disco o /).
+func isDriveRoot(p string) bool {
+	p = filepath.Clean(p)
+	if v := filepath.VolumeName(p); v != "" {
+		rest := strings.Trim(p[len(v):], `\/`)
+		return rest == ""
+	}
+	if p == "/" {
+		return true
+	}
+	dir := filepath.Dir(p)
+	return dir == "/Volumes" || dir == "/media" || filepath.Dir(dir) == "/media" || dir == "/mnt"
+}
+
+// Carpetas y archivos del sistema que hay en la raíz de un disco y que nunca
+// se respaldan (son de Windows o de macOS, no tuyos).
+var systemRootItems = map[string]bool{
+	"$recycle.bin": true, "recycler": true, "system volume information": true,
+	"$windows.~bt": true, "$windows.~ws": true, "$winreagent": true, "config.msi": true,
+	"recovery": true, "pagefile.sys": true, "hiberfil.sys": true, "swapfile.sys": true,
+	"dumpstack.log": true, "dumpstack.log.tmp": true, "found.000": true,
+	".trashes": true, ".spotlight-v100": true, ".fseventsd": true, ".documentrevisions-v100": true,
+	".temporaryitems": true, ".trash-1000": true, "lost+found": true,
+}
+
+func isSystemRootItem(name string) bool { return systemRootItems[strings.ToLower(name)] }

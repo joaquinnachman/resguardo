@@ -813,3 +813,26 @@ func TestCopyUpdatesModifiedAndRestorePoints(t *testing.T) {
 		t.Fatalf("debería estar al día: %+v", d)
 	}
 }
+
+func TestDriveRootHelpers(t *testing.T) {
+	for p, want := range map[string]bool{"/": true, "/Volumes/Disco": true, "/media/joa/DISCO": true, "/Volumes/Disco/Musica": false, "/home/x": false} {
+		if isDriveRoot(p) != want {
+			t.Errorf("isDriveRoot(%q) = %v", p, !want)
+		}
+	}
+	if !isSystemRootItem("$RECYCLE.BIN") || !isSystemRootItem("System Volume Information") || isSystemRootItem("ANASTASIA") {
+		t.Error("isSystemRootItem")
+	}
+	task := NewTask()
+	task.Type = TypeFull
+	task.Direct = true
+	task.Separated = false
+	task.Sources = []Location{{Path: "/Volumes/Disco"}}
+	if !isContentsOnly(task) {
+		t.Error("un disco entero tiene que copiarse sin carpeta propia")
+	}
+	task.Sources = []Location{{Path: "/Volumes/Disco/Musica"}}
+	if isContentsOnly(task) {
+		t.Error("una carpeta común conserva su carpeta")
+	}
+}

@@ -1056,9 +1056,15 @@ function layoutPreview(t) {
   return h("p", { class: "muted small" }, "Va a quedar así: ", h("code", null, p + sep + inner));
 }
 
+// Un disco entero (E:\, /Volumes/Disco): se copia lo de adentro, sin carpeta con la letra.
+function isDriveRootPath(p) {
+  p = String(p || "").replace(/^\?[DF]\?/, "").trim();
+  return /^[A-Za-z]:[\\/]?$/.test(p) || /^\/Volumes\/[^/]+\/?$/.test(p) || p === "/";
+}
+
 function isContentsOnlyTask(t) {
   const s = t.sources || [];
-  return isDirectTask(t) && !!t.contentsOnly && s.length === 1 && !s[0].forceFile && !t.absolutePaths && ["", "ninguna", "individual"].includes(t.compression || "");
+  return isDirectTask(t) && (!!t.contentsOnly || (s.length === 1 && isDriveRootPath(s[0].path))) && s.length === 1 && !s[0].forceFile && !t.absolutePaths && ["", "ninguna", "individual"].includes(t.compression || "");
 }
 
 // Ejemplo de cómo queda un proyecto en el primer destino.
@@ -1098,6 +1104,7 @@ function editorPane(t, tab, redraw) {
         t.type !== "ficticio" && t.type !== "proyectos" ? h("div", { class: "block" },
           h("h3", null, "Cómo copia"),
           h("p", { class: "muted small" }, "Cada respaldo actualiza la misma copia en el destino: copia los archivos nuevos y los que cambiaron (compara la fecha de modificación y el tamaño con la copia). Así, si guardaste otra vez un proyecto, se copia aunque no sea un archivo nuevo."),
+          (t.sources || []).length === 1 && isDriveRootPath(t.sources[0].path) ? h("p", { class: "muted small" }, "El origen es un disco entero: se copia lo que tiene adentro directo en el destino, sin crear una carpeta con la letra del disco, y sin la papelera ni las carpetas del sistema.") :
           (t.sources || []).length === 1 ? fCheck(t, "contentsOnly", "Copiar sólo lo que hay adentro, sin crear la carpeta del origen", "Sirve para seguir actualizando una copia que ya tenés en el destino.", redraw) : null,
           layoutPreview(t),
           ["", "ninguna"].includes(t.compression || "") ? fCheck(t, "restorePoints", "Guardar puntos de restauración", "Antes de reemplazar o quitar un archivo del destino, guarda la versión anterior en “_Resguardo versiones”, en una carpeta con la fecha. Se conservan los últimos 5: al hacer el sexto se borra el más viejo.") : null,
