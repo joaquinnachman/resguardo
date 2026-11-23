@@ -1,25 +1,24 @@
 {
   "datos": {
     "app": "Resguardo",
-    "version": "1.3.0",
-    "date": "2026-11-22",
+    "version": "1.3.1",
+    "date": "2026-11-23",
     "notes": [
-      "Un solo tipo de copia: en cada respaldo actualiza el destino con lo nuevo y lo modificado (compara fecha y tamaño, así un proyecto guardado otra vez se copia). Las tareas completas, incrementales y diferenciales pasan solas a este tipo.",
-      "Puntos de restauración (opcional): antes de reemplazar o quitar un archivo guarda la versión anterior; se conservan los últimos 5.",
-      "Vista previa al tocar \"Ejecutar ahora\": muestra qué se va a copiar, qué cambió y qué se quitaría, antes de copiar.",
-      "Logo nuevo, y versión clara del logo con la apariencia clara.",
-      "La barra de arriba entra bien en ventanas angostas y \"Crear tarea\" abre el menú con todas las variantes."
+      "Al copiar un disco entero (por ejemplo E:\\) copia lo de adentro directo en el destino, sin crear una carpeta con la letra del disco.",
+      "Nunca entra a la papelera ($RECYCLE.BIN) ni a \"System Volume Information\", así no aparecen más avisos de \"Acceso denegado\".",
+      "Nunca intenta copiar archivos de sistema de Windows como pagefile.sys, hiberfil.sys o DumpStack.log.tmp.",
+      "La barra de tareas de Windows toma el logo nuevo después de actualizar."
     ],
     "windows": {
-      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.3.0-Windows.zip",
-      "size": 4808054,
-      "sha256": "f57bbb35b35a5f330861440aaba823bd1d7b5afe118ed77dd0c23b787b6bf650"
+      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.3.1-Windows.zip",
+      "size": 4814615,
+      "sha256": "38888083f17027e00bec483064b3b36bf917972071bfd0dd59fa677f5fd9d84c"
     },
     "mac": {
-      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.3.0-Mac.zip",
-      "size": 8999560,
-      "sha256": "c56b2ddccce74a90b2160e692fe4d85e7173efc357dc941e9cb002293a1d6fa4"
+      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.3.1-Mac.zip",
+      "size": 9001264,
+      "sha256": "e5b1c301cd395f20b6153d597f1ee565e5ea05f2acd7b846d2f8badd7ae57fee"
     }
   },
-  "firma": "RF1wcs/AGOUkE7p89SxZnfLX5AXjRw3UiD1NCU5N/7EeL4u55LID8Zy5BeEshymVBiOOdIvgInfiDHxNf3PqCg=="
+  "firma": "hlaS0/jrD3MqARNJ2PA/A4e75KXmr9kvJ/R1oydhmknZxRq9L0wuCFFILqeCdCLTRTIU1KwwrmrXgFMG//l/Cg=="
 }

@@ -509,6 +509,7 @@ const HISTORIA = [
   ["1.2.3", "Busca versiones nuevas cada vez que abrís la ventana."],
   ["1.2.4", "Esta pantalla."],
   ["1.3", "Un solo tipo de copia que actualiza lo que cambió, puntos de restauración, vista previa antes de copiar y logo nuevo."],
+  ["1.3.1", "Copiar un disco entero sin crear una carpeta con la letra, sin la papelera ni archivos de sistema de Windows, y el logo nuevo en la barra de tareas."],
 ];
 
 function renderAbout() {
