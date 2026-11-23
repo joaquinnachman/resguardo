@@ -679,6 +679,13 @@ async function deleteTask(t) {
     t.type !== "proyectos" ? h("label", { class: "check" }, files, h("span", null, "Borrar también los archivos de sus respaldos", h("small", null, "No se puede deshacer."))) : null),
   "Borrar tarea", true);
   if (!ok) return;
+  // Segunda confirmación (pedido de Joaquín): que no se borre una tarea de un solo clic.
+  const sure = await confirmSheet("¿Estás seguro?", h("div", null,
+    h("p", null, files.checked
+      ? h("span", null, "Se va a borrar la tarea ", h("b", null, t.name), " y ", h("b", null, "también los archivos de sus respaldos"), ". Eso no se puede deshacer.")
+      : h("span", null, "Se va a borrar la tarea ", h("b", null, t.name), ". Los respaldos que ya hizo quedan en el destino."))),
+  files.checked ? "Sí, borrar todo" : "Sí, borrar la tarea", true);
+  if (!sure) return;
   await attempt(() => api("task/delete", { id: t.id, files: files.checked }), "Tarea borrada");
   S.sel = null;
   await reload();

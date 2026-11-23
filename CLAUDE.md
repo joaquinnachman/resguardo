@@ -44,3 +44,4 @@ Caché de íconos de Windows refrescada al arrancar cada versión nueva (`refres
 ## Pendiente para la próxima versión (no publicar hasta que Joaquín lo pida)
 
 1. Filtros: al elegir una carpeta o un archivo con "Buscar…" se agrega directo a la lista, sin tocar "Agregar" (pedido de Joaquín; para sacarla está "Quitar"). Hecho en `filterList` (ui/app.js), sin publicar: "Buscar…" elige carpeta salvo que el tipo sea Archivo, no repite entradas y el selector recuerda el último tipo usado (`lastFilterKind`). Probado con Playwright.
+2. Borrar una tarea pide una segunda confirmación "¿Estás seguro?" después del aviso de borrado (pedido de Joaquín), que dice si se borran también los archivos de los respaldos. Hecho en `deleteTask` (ui/app.js), sin publicar. Probado con Playwright: Cancelar en la segunda deja la tarea; "Sí, borrar la tarea" la borra.
