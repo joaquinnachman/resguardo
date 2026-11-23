@@ -331,6 +331,26 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 		_ = readBody(r, &b)
 		s.upd.Check(b.Install)
 		writeJSON(w, s.upd.Status())
+	case "open/link":
+		// Sólo direcciones fijas de Resguardo: la interfaz no puede abrir cualquier cosa.
+		var b struct {
+			Which string `json:"which"`
+		}
+		_ = readBody(r, &b)
+		links := map[string]string{
+			"repo":      "https://github.com/joaquinnachman/resguardo",
+			"descargas": "https://github.com/joaquinnachman/resguardo#descargas",
+		}
+		u, ok := links[b.Which]
+		if !ok {
+			writeErr(w, 400, "enlace desconocido")
+			return
+		}
+		if err := openExternal(u); err != nil {
+			writeErr(w, 500, "no se pudo abrir el navegador")
+			return
+		}
+		writeJSON(w, map[string]bool{"ok": true})
 	case "update/opened":
 		s.upd.Opened()
 		writeJSON(w, map[string]bool{"ok": true})

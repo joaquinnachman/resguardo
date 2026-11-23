@@ -1,4 +1,4 @@
-RESGUARDO 1.2.3 — respaldos para músicos y productores
+RESGUARDO 1.2.4 — respaldos para músicos y productores
 =====================================================
 
 Hace todo lo que hace Cobian Backup (tareas completas, incrementales y

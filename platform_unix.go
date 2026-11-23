@@ -281,3 +281,11 @@ func waitProcessExit(pid int, timeout time.Duration) {
 func closeAppWindows(time.Duration) {}
 
 func syncInstallInfo() {}
+
+// openExternal abre una dirección en el navegador de siempre.
+func openExternal(url string) error {
+	if runtime.GOOS == "darwin" {
+		return exec.Command("open", url).Start()
+	}
+	return exec.Command("xdg-open", url).Start()
+}

@@ -339,9 +339,9 @@ function render() {
 
 function renderTop() {
   const nav = h("nav", { class: "nav", "aria-label": "Secciones" },
-    ["tareas", "registro", "herramientas", "opciones"].map((v) =>
+    ["tareas", "registro", "herramientas", "opciones", "acerca"].map((v) =>
       h("button", { "aria-current": S.view === v ? "page" : null, onclick: () => { S.view = v; render(); } },
-        { tareas: "Tareas", registro: "Registro", herramientas: "Herramientas", opciones: "Opciones" }[v])));
+        { tareas: "Tareas", registro: "Registro", herramientas: "Herramientas", opciones: "Opciones", acerca: "Acerca de" }[v])));
   const lists = S.data.lists.length ? S.data.lists : [S.data.settings.currentList];
   const listSel = h("select", {
     "aria-label": "Lista de tareas", title: "Lista de tareas",
@@ -474,10 +474,86 @@ function renderMain() {
   } else if (S.view === "herramientas") {
     main.replaceChildren(h("section", { class: "content" }, h("div", { class: "content-narrow", id: "toolsview" })));
     renderTools();
+  } else if (S.view === "acerca") {
+    main.replaceChildren(h("section", { class: "content" }, h("div", { class: "content-narrow about", id: "aboutview" })));
+    renderAbout();
   } else {
     main.replaceChildren(h("section", { class: "content" }, h("div", { id: "optview" })));
     renderOptions();
   }
+}
+
+// Busca actualizaciones ya y espera el resultado (hasta 15 s).
+async function checkUpdatesNow(statusEl) {
+  if (statusEl) statusEl.textContent = "Buscando…";
+  await api("update/check", {});
+  for (let i = 0; i < 30; i++) {
+    await new Promise((r) => setTimeout(r, 500));
+    const r = await api("status?log=999999999");
+    S.data.update = r.update;
+    if (r.update.state !== "buscando") break;
+  }
+  if (statusEl) statusEl.textContent = updateText(S.data.update);
+  renderTransport();
+  return S.data.update;
+}
+
+// ---------------------------------------------------------------------------
+// Acerca de
+// ---------------------------------------------------------------------------
+const HISTORIA = [
+  ["1.0", "La primera versión: tareas como en Cobian y proyectos de Ableton Live, Cubase y Pro Tools."],
+  ["1.1", "Se actualiza solo, y las copias pueden ir directo en el destino, sin carpetas extra."],
+  ["1.2", "Instalador para Windows e importar las tareas que ya tenías en Cobian."],
+  ["1.2.2", "Proyectos con cada carpeta tal cual y la opción “Copiar toda la carpeta”."],
+  ["1.2.3", "Busca versiones nuevas cada vez que abrís la ventana."],
+  ["1.2.4", "Esta pantalla."],
+];
+
+function renderAbout() {
+  const v = $("#aboutview");
+  if (!v) return;
+  const u = S.data.update || {};
+  const status = h("p", { class: "muted", style: { margin: "0" } }, updateText(u));
+  const actions = h("div", { class: "row wrap" });
+  const drawActions = () => {
+    const x = S.data.update || {};
+    const newer = ["disponible", "lista", "esperando"].includes(x.state);
+    actions.replaceChildren(
+      h("button", { class: "btn" + (newer ? "" : " primary"), onclick: async (e) => {
+        e.target.disabled = true;
+        await attempt(() => checkUpdatesNow(status));
+        e.target.disabled = false;
+        drawActions();
+      } }, "Buscar actualizaciones"),
+      newer && x.canSelf ? h("button", { class: "btn primary", onclick: installNow }, "Instalar la versión " + x.latest) : null);
+  };
+  drawActions();
+  const link = (which, text) => h("button", { class: "btn", onclick: () => attempt(() => api("open/link", { which })) }, text);
+  v.replaceChildren(
+    h("div", { class: "about-head" },
+      h("img", { src: "icono.png", alt: "" }),
+      h("div", null,
+        h("h1", null, "Resguardo"),
+        h("p", { class: "about-ver" }, "Versión " + (u.current || "—")),
+        h("p", { class: "muted", style: { margin: "2px 0 0" } }, "Respaldos para músicos y productores"))),
+    h("div", { class: "block about-upd" }, status, actions),
+
+    h("h2", null, "Para qué es"),
+    h("p", null, "Para que ningún proyecto se pierda. Resguardo hace lo mismo que Cobian Backup: copias completas, incrementales y diferenciales, ZIP y 7z, cifrado, FTP y SFTP, espejo, eventos y avisos por correo."),
+    h("p", null, "Además entiende de música. Encuentra tus proyectos de Ableton Live, Cubase y Pro Tools y guarda una versión cada vez que guardás o cerrás el DAW. Se lleva los samples que están fuera de la carpeta del proyecto y te deja volver a cualquier versión sin pisar nada."),
+
+    h("h2", null, "Cómo lo hicimos"),
+    h("p", null, "Joaquín respaldaba los discos del estudio con Cobian Backup y quería algo pensado para sesiones: que copie cuando cerrás el DAW, que no se olvide de los samples, que deje las carpetas tal cual y que se actualice solo. Lo fuimos armando y probando en el estudio, versión por versión:"),
+    h("ul", { class: "about-hist" }, HISTORIA.map(([ver, txt]) => h("li", null, h("b", null, ver), h("span", null, txt)))),
+
+    h("h2", null, "Quién lo hace"),
+    h("p", null, h("b", null, "Joaquín Nachman"), ": ingeniero de sonido, productor y cantante de Buenos Aires. Tiene Claraboya Estudio, en Vicente López, un estudio de grabación que construyó él mismo."),
+    h("p", null, "Resguardo lo ideó y lo prueba Joaquín; el programa lo escribió Claude, de Anthropic, a partir de sus pedidos."),
+    h("div", { class: "row wrap" }, link("repo", "Ver el código en GitHub")),
+
+    h("h2", null, "Créditos"),
+    h("p", { class: "muted small" }, "7-Zip, de Igor Pavlov (licencia LGPL), para los archivos .7z. La lectura de sesiones de Pro Tools se basa en ptformat, de Damien Zammit (LGPL). Tipografía Archivo, de Omnibus-Type (SIL Open Font License). Instalador hecho con NSIS."));
 }
 
 // ---------------------------------------------------------------------------
@@ -1456,15 +1532,7 @@ function updateBlock(s) {
     newer && (u.notes || []).length ? h("ul", { class: "notes" }, u.notes.map((x) => h("li", null, x))) : null,
     h("div", { class: "row wrap" },
       h("button", { class: "btn", onclick: async () => {
-        status.textContent = "Buscando…";
-        await api("update/check", {});
-        for (let i = 0; i < 30; i++) {
-          await new Promise((r) => setTimeout(r, 500));
-          const r = await api("status?log=999999999");
-          S.data.update = r.update;
-          if (r.update.state !== "buscando") break;
-        }
-        status.textContent = updateText(S.data.update);
+        await checkUpdatesNow(status);
         if (["disponible", "lista", "esperando"].includes(S.data.update.state)) renderOptions();
       } }, "Buscar ahora"),
       newer && u.canSelf ? h("button", { class: "btn primary", onclick: installNow }, "Instalar la versión " + u.latest) : null,

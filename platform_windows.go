@@ -613,3 +613,8 @@ func syncInstallInfo() {
 		_ = k.SetStringValue("DisplayVersion", AppVersion)
 	}
 }
+
+// openExternal abre una dirección en el navegador predeterminado.
+func openExternal(url string) error {
+	return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+}
