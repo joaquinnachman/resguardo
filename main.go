@@ -157,6 +157,7 @@ func startApp() (*App, error) {
 		_ = setAutostart(true) // por si se movió el programa
 	}
 	syncInstallInfo() // la versión que muestra Windows en "Aplicaciones instaladas"
+	refreshShellIcons() // que la barra de tareas muestre el ícono de esta versión
 	return app, nil
 }
 

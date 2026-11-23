@@ -109,6 +109,8 @@ Section "Resguardo"
 
   CreateShortCut "$SMPROGRAMS\Resguardo.lnk" "$INSTDIR\Resguardo.exe" "" "$INSTDIR\Resguardo.exe" 0 SW_SHOWNORMAL "" "Respaldos para músicos y productores"
   CreateShortCut "$DESKTOP\Resguardo.lnk" "$INSTDIR\Resguardo.exe" "" "$INSTDIR\Resguardo.exe" 0 SW_SHOWNORMAL "" "Respaldos para músicos y productores"
+  ; que el Explorador y la barra de tareas tomen el ícono nuevo
+  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0x1000, p 0, p 0)'
 
   WriteRegStr HKCU "${UNKEY}" "DisplayName" "Resguardo"
   WriteRegStr HKCU "${UNKEY}" "DisplayVersion" "${VERSION}"

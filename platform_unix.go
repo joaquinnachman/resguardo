@@ -280,7 +280,8 @@ func waitProcessExit(pid int, timeout time.Duration) {
 
 func closeAppWindows(time.Duration) {}
 
-func syncInstallInfo() {}
+func syncInstallInfo()   {}
+func refreshShellIcons() {}
 
 // openExternal abre una dirección en el navegador de siempre.
 func openExternal(url string) error {

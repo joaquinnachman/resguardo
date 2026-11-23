@@ -614,6 +614,58 @@ func syncInstallInfo() {
 	}
 }
 
+// refreshShellIcons: Windows guarda en caché el ícono del .exe y de sus accesos
+// directos (escritorio, Inicio, anclado en la barra de tareas). Cuando la app se
+// actualiza sola el .exe cambia pero el ícono viejo queda en la barra de tareas
+// hasta que se borra la caché. La primera vez que arranca cada versión le avisa
+// al Explorador que esos archivos cambiaron y le pide que refresque los íconos.
+func refreshShellIcons() {
+	marker := filepath.Join(dataDir(), "iconos-version")
+	if b, err := os.ReadFile(marker); err == nil && strings.TrimSpace(string(b)) == AppVersion {
+		return
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return
+	}
+	shell32 := windows.NewLazySystemDLL("shell32.dll")
+	notify := shell32.NewProc("SHChangeNotify")
+	const (
+		shcneUpdateItem   = 0x00002000
+		shcneAssocChanged = 0x08000000
+		shcnfIDList       = 0x0000
+		shcnfPathW        = 0x0005
+		shcnfFlushNoWait  = 0x3000
+	)
+	paths := []string{exe}
+	for _, d := range []string{
+		filepath.Join(os.Getenv("APPDATA"), `Microsoft\Windows\Start Menu\Programs`),
+		filepath.Join(os.Getenv("USERPROFILE"), "Desktop"),
+		filepath.Join(os.Getenv("APPDATA"), `Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar`),
+		filepath.Join(os.Getenv("APPDATA"), `Microsoft\Internet Explorer\Quick Launch`),
+	} {
+		if p := filepath.Join(d, "Resguardo.lnk"); func() bool { _, err := os.Stat(p); return err == nil }() {
+			paths = append(paths, p)
+		}
+	}
+	for _, p := range paths {
+		if u, err := windows.UTF16PtrFromString(p); err == nil {
+			notify.Call(shcneUpdateItem, shcnfPathW|shcnfFlushNoWait, uintptr(unsafe.Pointer(u)), 0)
+		}
+	}
+	notify.Call(shcneAssocChanged, shcnfIDList|shcnfFlushNoWait, 0, 0)
+	// Windows 10/11: reconstruye la caché de íconos del usuario sin reiniciar el Explorador.
+	if sys := os.Getenv("SystemRoot"); sys != "" {
+		cmd := exec.Command(filepath.Join(sys, "System32", "ie4uinit.exe"), "-show")
+		hideWindow(cmd)
+		if err := cmd.Start(); err == nil {
+			go cmd.Wait()
+		}
+	}
+	_ = os.MkdirAll(filepath.Dir(marker), 0o755)
+	_ = os.WriteFile(marker, []byte(AppVersion), 0o644)
+}
+
 // openExternal abre una dirección en el navegador predeterminado.
 func openExternal(url string) error {
 	return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
