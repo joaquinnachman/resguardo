@@ -17,7 +17,7 @@ El instalador de Windows sale de `installer/resguardo.nsi` con NSIS (`apt-get in
 
 ## Publicar una versión nueva (la app se actualiza sola)
 
-1. Subir `AppVersion` en `model.go`, las versiones de `winres/winres.json` (y regenerar el .syso) y la primera línea de `LEEME.txt`.
+1. Subir `AppVersion` en `model.go`, las versiones de `winres/winres.json` (y regenerar el .syso) y la primera línea de `LEEME.txt`, y sumar la versión a `HISTORIA` en `ui/app.js` (pantalla "Acerca de").
 2. `go test ./... && ./build.sh`
 3. Escribir las novedades (una por línea, en lenguaje de usuario) en un archivo de texto.
 4. `go run ./tools/publicar -clave <archivo con la clave> -notas <novedades.txt>`
