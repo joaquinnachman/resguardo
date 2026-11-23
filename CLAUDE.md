@@ -40,3 +40,7 @@ Un solo tipo de copia ("Copia de carpetas", `completo` + `Direct`, compara fecha
 ## Hecho en 1.3.1
 
 Caché de íconos de Windows refrescada al arrancar cada versión nueva (`refreshShellIcons`, falta confirmar en el Windows de Joaquín que la barra de tareas cambie). Disco entero como origen = "sólo lo de adentro" (`sourceIsDriveRoot`). Nunca se leen ni copian `$RECYCLE.BIN`/`RECYCLER`/`RECYCLED`/`System Volume Information` (`isNeverCopyDir`) ni `pagefile.sys`/`hiberfil.sys`/`swapfile.sys`/`DumpStack.log(.tmp)` (`isNeverCopyFile`), en ningún nivel; otras cosas de sistema sólo en la raíz de un disco (`isSystemRootItem`).
+
+## Pendiente para la próxima versión (no publicar hasta que Joaquín lo pida)
+
+1. Filtros: al elegir una carpeta o un archivo con "Buscar…" se agrega directo a la lista, sin tocar "Agregar" (pedido de Joaquín; para sacarla está "Quitar"). Hecho en `filterList` (ui/app.js), sin publicar: "Buscar…" elige carpeta salvo que el tipo sea Archivo, no repite entradas y el selector recuerda el último tipo usado (`lastFilterKind`). Probado con Playwright.

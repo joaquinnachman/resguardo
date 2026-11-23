@@ -1312,15 +1312,19 @@ async function remoteDialog(l) {
   return ok ? o : null;
 }
 
+let lastFilterKind = "mascara";
+
+// Lista de filtros. "Buscar…" agrega la carpeta (o el archivo) apenas se elige;
+// para sacarla está "Quitar".
 function filterList(arr, redraw) {
   const names = { mascara: "Máscara", archivo: "Archivo", carpeta: "Carpeta", regex: "Expresión regular" };
   const rows = arr.map((f, i) => h("div", { class: "it" }, h("span", { class: "tag" }, names[f.kind] || f.kind), h("span", { class: "txt" }, f.value),
     h("button", { class: "btn small ghost danger", onclick: () => { arr.splice(i, 1); redraw(); } }, "Quitar")));
-  const kind = h("select", null, Object.entries(names).map(([k, v]) => h("option", { value: k }, v)));
+  const kind = h("select", { onchange: () => { lastFilterKind = kind.value; } }, Object.entries(names).map(([k, v]) => h("option", { value: k, selected: k === lastFilterKind }, v)));
   const val = h("input", { type: "text", placeholder: "*.wav, *Bounce*", style: { flex: 1 } });
   return h("div", null, h("div", { class: "items" }, rows.length ? rows : h("div", { class: "none" }, "Nada.")),
     h("div", { class: "row" }, kind, val,
-      h("button", { class: "btn small", onclick: async () => { if (kind.value === "archivo" || kind.value === "carpeta") { const p = await pickPath({ files: kind.value === "archivo", title: "Elegir" }); if (p) val.value = p; } } }, "Buscar…"),
+      h("button", { class: "btn small", onclick: async () => { const k = kind.value === "archivo" ? "archivo" : "carpeta"; const p = await pickPath({ files: k === "archivo", title: k === "archivo" ? "Elegí un archivo" : "Elegí una carpeta" }); if (p) { lastFilterKind = k; if (!arr.some((f) => f.kind === k && f.value === p)) arr.push({ kind: k, value: p }); redraw(); } } }, "Buscar…"),
       h("button", { class: "btn small", onclick: () => { if (val.value.trim()) { arr.push({ kind: kind.value, value: val.value.trim() }); redraw(); } } }, "Agregar")));
 }
 
