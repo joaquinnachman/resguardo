@@ -28,6 +28,8 @@ type RunCtx struct {
 	errors   int
 	files    int
 	bytes    int64
+
+	restoreTS string // carpeta del punto de restauración de esta corrida
 }
 
 func (rc *RunCtx) fail(format string, a ...any) {
@@ -88,7 +90,7 @@ func (rc *RunCtx) effectiveType(st *TaskState, h []BackupRecord) (string, string
 	return t, ""
 }
 
-// runClassic ejecuta una tarea al estilo Cobian (completo / incremental / diferencial).
+// runClassic ejecuta una tarea de copia de carpetas (y los tipos viejos completo / incremental / diferencial).
 func runClassic(rc *RunCtx) (*BackupRecord, error) {
 	task := rc.task
 	st := rc.store.State(task.ID)
@@ -236,6 +238,7 @@ func runClassic(rc *RunCtx) (*BackupRecord, error) {
 
 	failed := map[string]bool{}
 	tsName := formatTS(start, rc.settings.TimestampFormat)
+	rc.restoreTS = snapName(start) // ordenable: el orden alfabético es el cronológico
 	for di, dest := range task.Destinations {
 		if rc.ctx.Err() != nil {
 			break
@@ -524,6 +527,9 @@ func (rc *RunCtx) toDestination(di int, dest Location, typ, tsName string, selec
 						continue
 					}
 				}
+				if task.RestorePoints && !task.Separated {
+					rc.keepRestorePoint(fsys, root, rc.restoreTS, e.Rel, target)
+				}
 				err := rc.copier.CopyFile(fsys, e.Abs, target, info, false)
 				if errors.Is(err, errChangedDuringCopy) {
 					rc.log.Warn("%s cambió durante la copia; se copió igual (se volverá a copiar la próxima vez)", e.Real)
@@ -539,6 +545,9 @@ func (rc *RunCtx) toDestination(di int, dest Location, typ, tsName string, selec
 		}
 		if task.Mirror && !task.Separated && rc.ctx.Err() == nil {
 			rc.mirrorClean(fsys, root, all, dirs, tops, di)
+		}
+		if task.RestorePoints && !task.Separated {
+			rc.pruneRestorePoints(fsys, root)
 		}
 		return []Output{{Dest: di, Path: root, Kind: "carpeta", Only: only}}, nil
 
@@ -807,6 +816,11 @@ func (rc *RunCtx) mirrorClean(fsys FS, root string, all map[string]Entry, dirs, 
 				}
 			}
 			removed++
+			if rc.task.RestorePoints && !rc.task.Separated && rc.restoreTS != "" {
+				rc.keepRestorePoint(fsys, root, rc.restoreTS, r, p)
+				rc.log.Detail("Espejo: guardado en puntos de restauración %s", r)
+				continue
+			}
 			if safeRoot != "" {
 				target := fsys.Join(safeRoot, r)
 				_ = fsys.MkdirAll(fsys.Dir(target))
@@ -1041,4 +1055,48 @@ func humanBytes(b int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
+}
+
+// Puntos de restauración de las copias que se actualizan en el lugar.
+const restorePointsDir = "_Resguardo versiones"
+const restorePointsKeep = 5
+
+// keepRestorePoint aparta la versión que está en el destino antes de pisarla.
+func (rc *RunCtx) keepRestorePoint(fsys FS, root, ts, rel, target string) {
+	if _, err := fsys.Stat(target); err != nil {
+		return // no había nada que guardar
+	}
+	parts := append([]string{root, restorePointsDir, ts}, strings.Split(rel, "/")...)
+	dst := fsys.Join(parts...)
+	if err := fsys.MkdirAll(fsys.Dir(dst)); err != nil {
+		rc.log.Warn("No se pudo guardar el punto de restauración de %s: %v", rel, err)
+		return
+	}
+	if err := fsys.Rename(target, dst); err != nil {
+		rc.log.Warn("No se pudo guardar el punto de restauración de %s: %v", rel, err)
+	}
+}
+
+// pruneRestorePoints deja sólo los últimos puntos de restauración.
+func (rc *RunCtx) pruneRestorePoints(fsys FS, root string) {
+	dir := fsys.Join(root, restorePointsDir)
+	ents, err := fsys.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	var names []string
+	for _, e := range ents {
+		if e.IsDir() && e.Name() != "." && e.Name() != ".." {
+			names = append(names, e.Name())
+		}
+	}
+	sort.Strings(names) // los nombres son fechas: el orden alfabético es el cronológico
+	for len(names) > restorePointsKeep {
+		if err := fsys.RemoveAll(fsys.Join(dir, names[0])); err != nil {
+			rc.log.Warn("No se pudo borrar el punto de restauración %s: %v", names[0], err)
+		} else {
+			rc.log.Info("Se borró el punto de restauración más viejo (%s)", names[0])
+		}
+		names = names[1:]
+	}
 }

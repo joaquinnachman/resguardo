@@ -91,9 +91,23 @@ func (s *Store) loadList(name string) error {
 	}
 	for i := range tasks {
 		normalizeTask(&tasks[i])
+		simplifyTask(&tasks[i])
 	}
 	s.Tasks = tasks
 	return nil
+}
+
+// simplifyTask: desde la 1.3 hay un solo tipo de copia, que actualiza
+// siempre la carpeta del destino y copia lo que cambió (fecha o tamaño).
+// Completo, incremental y diferencial pasan a ese tipo ("completo" por dentro).
+func simplifyTask(t *Task) {
+	switch t.Type {
+	case TypeFull, TypeIncr, TypeDiff:
+		t.Type = TypeFull
+		t.Separated = false
+		t.Direct = true
+		t.UseArchiveAttr = false
+	}
 }
 
 func normalizeTask(t *Task) {

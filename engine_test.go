@@ -729,3 +729,87 @@ func TestProjectsSimpleLayoutCopyAll(t *testing.T) {
 		t.Fatalf("restauró %q", b)
 	}
 }
+
+func TestSimplifyOldTypes(t *testing.T) {
+	for _, typ := range []string{TypeFull, TypeIncr, TypeDiff} {
+		task := NewTask()
+		task.Type = typ
+		task.Separated = true
+		task.UseArchiveAttr = true
+		simplifyTask(&task)
+		if task.Type != TypeFull || task.Separated || !task.Direct || task.UseArchiveAttr {
+			t.Fatalf("%s: no se migró bien: %+v", typ, task)
+		}
+	}
+	p := NewTask()
+	p.Type = TypeProjects
+	simplifyTask(&p)
+	if p.Type != TypeProjects {
+		t.Fatal("tocó una tarea de proyectos")
+	}
+}
+
+func TestCopyUpdatesModifiedAndRestorePoints(t *testing.T) {
+	store, log, e, root := testEnv(t)
+	base := time.Now().Add(-2 * time.Hour)
+	src := filepath.Join(root, "Cubase", "Tema")
+	writeFile(t, filepath.Join(src, "Tema.cpr"), []byte("lunes"), base)
+	writeFile(t, filepath.Join(src, "Audio", "voz.wav"), []byte("voz"), base)
+	writeFile(t, filepath.Join(src, "Audio", "vieja.wav"), []byte("vieja"), base)
+	dst := filepath.Join(root, "Backup")
+	// puntos viejos: al hacer uno nuevo tiene que quedar sólo los últimos 5
+	for i := 1; i <= 5; i++ {
+		writeFile(t, filepath.Join(dst, restorePointsDir, "2020-01-0"+string(rune('0'+i))+" 10.00.00", "x.txt"), []byte("x"), base)
+	}
+
+	task := NewTask()
+	task.Name = "Cubase"
+	task.Type = TypeIncr // tipo viejo: se migra al guardar
+	simplifyTask(&task)
+	task.Mirror = true
+	task.RestorePoints = true
+	task.Sources = []Location{{Path: src}}
+	task.Destinations = []Location{{Path: dst}}
+	store.PutTask(task)
+
+	// Vista previa antes de la primera copia: todo es nuevo.
+	pv, err := PreviewTask(context.Background(), store, task, store.GetSettings(), log)
+	if err != nil || !pv.Supported || len(pv.Dests) != 1 || pv.Dests[0].New != 3 || pv.Dests[0].Changed != 0 {
+		t.Fatalf("vista previa inicial: %+v %v", pv, err)
+	}
+	run(t, e, task.ID, false, "")
+	if got := treeOf(t, filepath.Join(dst, "Tema")); string(got["Tema.cpr"]) != "lunes" || len(got) != 3 {
+		dumpLog(t, log)
+		t.Fatalf("primera copia: %v", keys(got))
+	}
+
+	// El martes se guarda el .cpr otra vez (mismo tamaño, otra fecha) y se borra un audio.
+	writeFile(t, filepath.Join(src, "Tema.cpr"), []byte("marte"), base.Add(time.Hour))
+	os.Remove(filepath.Join(src, "Audio", "vieja.wav"))
+	pv, _ = PreviewTask(context.Background(), store, task, store.GetSettings(), log)
+	d := pv.Dests[0]
+	if d.New != 0 || d.Changed != 1 || d.Removed != 1 || d.Items[0].Rel != "Tema/Tema.cpr" {
+		t.Fatalf("vista previa del martes: %+v", d)
+	}
+	run(t, e, task.ID, false, "")
+	got := treeOf(t, filepath.Join(dst, "Tema"))
+	if string(got["Tema.cpr"]) != "marte" || got["Audio/vieja.wav"] != nil {
+		dumpLog(t, log)
+		t.Fatalf("no actualizó el destino: %v", keys(got))
+	}
+	// La versión anterior quedó guardada, y hay como mucho 5 puntos.
+	ents, _ := os.ReadDir(filepath.Join(dst, restorePointsDir))
+	if len(ents) != 5 || ents[0].Name() == "2020-01-01 10.00.00" {
+		t.Fatalf("puntos de restauración: %v", ents)
+	}
+	last := filepath.Join(dst, restorePointsDir, ents[len(ents)-1].Name())
+	old := treeOf(t, last)
+	if string(old["Tema/Tema.cpr"]) != "lunes" || string(old["Tema/Audio/vieja.wav"]) != "vieja" {
+		t.Fatalf("punto de restauración: %v", keys(old))
+	}
+	// Sin cambios: la vista previa dice que está todo al día.
+	pv, _ = PreviewTask(context.Background(), store, task, store.GetSettings(), log)
+	if d := pv.Dests[0]; d.New+d.Changed+d.Removed != 0 {
+		t.Fatalf("debería estar al día: %+v", d)
+	}
+}

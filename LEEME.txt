@@ -1,11 +1,16 @@
-RESGUARDO 1.2.4 — respaldos para músicos y productores
+RESGUARDO 1.3.0 — respaldos para músicos y productores
 =====================================================
 
-Hace todo lo que hace Cobian Backup (tareas completas, incrementales y
-diferenciales, compresión ZIP/7z, cifrado, FTP/SFTP, eventos, espejo,
-correo, etc.) y además entiende proyectos de Ableton, Cubase y Pro Tools:
-guarda una versión cada vez que guardás o cerrás el DAW, incluye los samples
-que están fuera de la carpeta del proyecto y te deja volver a cualquier versión.
+Copia tus carpetas en el horario que elijas y en cada respaldo actualiza
+el destino con lo nuevo y lo modificado (compara la fecha de modificación
+y el tamaño, así un proyecto guardado otra vez se copia aunque no sea un
+archivo nuevo). Puede guardar hasta 5 puntos de restauración, te muestra
+una vista previa antes de copiar y tiene compresión ZIP/7z, cifrado,
+FTP/SFTP, eventos, espejo y avisos por correo.
+
+Además entiende proyectos de Ableton, Cubase y Pro Tools: guarda una
+versión cada vez que guardás o cerrás el DAW, incluye los samples que
+están fuera de la carpeta del proyecto y te deja volver a cualquier versión.
 
 
 WINDOWS

@@ -9,7 +9,7 @@ import (
 const AppName = "Resguardo"
 
 // AppVersion es var (y no const) para poder compilar versiones de prueba con -ldflags -X.
-var AppVersion = "1.2.4"
+var AppVersion = "1.3.0"
 
 // ---------- Tareas ----------
 
@@ -124,7 +124,10 @@ type Task struct {
 	// ContentsOnly (con Direct y un solo origen): lo que hay adentro del origen
 	// va directo en el destino, sin crear la carpeta del origen (como Cobian
 	// sin "crear el directorio superior").
-	ContentsOnly   bool `json:"contentsOnly"`
+	ContentsOnly bool `json:"contentsOnly"`
+	// RestorePoints: antes de reemplazar un archivo en el destino guarda el
+	// anterior en "_Resguardo versiones/<fecha>"; se conservan las últimas 5.
+	RestorePoints  bool `json:"restorePoints"`
 	UseArchiveAttr bool `json:"useArchiveAttr"`
 	UseVSS         bool `json:"useVSS"`
 

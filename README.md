@@ -1,6 +1,6 @@
 # Resguardo
 
-Respaldos para músicos y productores, para Windows y Mac. Hace lo mismo que Cobian Backup (tareas completas, incrementales y diferenciales, ZIP/7z, cifrado, FTP/SFTP, eventos, espejo, correo) y además entiende proyectos de Ableton Live, Cubase y Pro Tools: guarda una versión cada vez que guardás o cerrás el DAW, incluye los samples que están fuera de la carpeta del proyecto y te deja volver a cualquier versión.
+Respaldos para músicos y productores, para Windows y Mac. Copia tus carpetas en el horario que elijas y en cada respaldo actualiza el destino con lo nuevo y lo modificado (compara fecha y tamaño), con puntos de restauración, vista previa, ZIP/7z, cifrado, FTP/SFTP, eventos, espejo y correo. Además entiende proyectos de Ableton Live, Cubase y Pro Tools: guarda una versión cada vez que guardás o cerrás el DAW, incluye los samples que están fuera de la carpeta del proyecto y te deja volver a cualquier versión.
 
 ## Descargas
 

@@ -116,8 +116,8 @@ function fmtBytes(b) {
 }
 
 const TYPE_NAMES = {
-  proyectos: "Proyectos de DAW", completo: "Completo", incremental: "Incremental",
-  diferencial: "Diferencial", ficticio: "Ficticia (sólo eventos)", instantanea: "Versión",
+  proyectos: "Proyectos de DAW", completo: "Copia de carpetas", incremental: "Copia de carpetas",
+  diferencial: "Copia de carpetas", ficticio: "Ficticia (sólo eventos)", instantanea: "Versión",
 };
 const DIAS_LARGOS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 
@@ -502,12 +502,13 @@ async function checkUpdatesNow(statusEl) {
 // Acerca de
 // ---------------------------------------------------------------------------
 const HISTORIA = [
-  ["1.0", "La primera versión: tareas como en Cobian y proyectos de Ableton Live, Cubase y Pro Tools."],
+  ["1.0", "La primera versión: copias programadas de carpetas y proyectos de Ableton Live, Cubase y Pro Tools."],
   ["1.1", "Se actualiza solo, y las copias pueden ir directo en el destino, sin carpetas extra."],
-  ["1.2", "Instalador para Windows e importar las tareas que ya tenías en Cobian."],
+  ["1.2", "Instalador para Windows e importar las tareas que ya tenías en otro programa."],
   ["1.2.2", "Proyectos con cada carpeta tal cual y la opción “Copiar toda la carpeta”."],
   ["1.2.3", "Busca versiones nuevas cada vez que abrís la ventana."],
   ["1.2.4", "Esta pantalla."],
+  ["1.3", "Un solo tipo de copia que actualiza lo que cambió, puntos de restauración, vista previa antes de copiar y logo nuevo."],
 ];
 
 function renderAbout() {
@@ -540,17 +541,16 @@ function renderAbout() {
     h("div", { class: "block about-upd" }, status, actions),
 
     h("h2", null, "Para qué es"),
-    h("p", null, "Para que ningún proyecto se pierda. Resguardo hace lo mismo que Cobian Backup: copias completas, incrementales y diferenciales, ZIP y 7z, cifrado, FTP y SFTP, espejo, eventos y avisos por correo."),
+    h("p", null, "Para que ningún proyecto se pierda. Resguardo copia tus carpetas en el horario que elijas y en cada respaldo actualiza sólo lo que cambió. Tiene puntos de restauración, vista previa, ZIP y 7z, cifrado, FTP y SFTP, espejo, eventos y avisos por correo."),
     h("p", null, "Además entiende de música. Encuentra tus proyectos de Ableton Live, Cubase y Pro Tools y guarda una versión cada vez que guardás o cerrás el DAW. Se lleva los samples que están fuera de la carpeta del proyecto y te deja volver a cualquier versión sin pisar nada."),
 
     h("h2", null, "Cómo lo hicimos"),
-    h("p", null, "Joaquín respaldaba los discos del estudio con Cobian Backup y quería algo pensado para sesiones: que copie cuando cerrás el DAW, que no se olvide de los samples, que deje las carpetas tal cual y que se actualice solo. Lo fuimos armando y probando en el estudio, versión por versión:"),
+    h("p", null, "Joaquín respaldaba los discos del estudio con un programa de backup genérico y quería algo pensado para sesiones: que copie cuando cerrás el DAW, que no se olvide de los samples, que deje las carpetas tal cual y que se actualice solo. Lo fuimos armando y probando en el estudio, versión por versión:"),
     h("ul", { class: "about-hist" }, HISTORIA.map(([ver, txt]) => h("li", null, h("b", null, ver), h("span", null, txt)))),
 
     h("h2", null, "Quién lo hace"),
-    h("p", null, h("b", null, "Joaquín Nachman"), ": ingeniero de sonido, productor y cantante de Buenos Aires. Tiene Claraboya Estudio, en Vicente López, un estudio de grabación que construyó él mismo."),
-    h("p", null, "Resguardo lo ideó y lo prueba Joaquín; el programa lo escribió Claude, de Anthropic, a partir de sus pedidos."),
-    h("div", { class: "row wrap" }, link("repo", "Ver el código en GitHub")),
+    h("p", null, h("b", null, "Joaquín Nachman"), ": ingeniero de sonido, productor y cantante de Buenos Aires. Tiene Claraboya Estudio (instagram.com/claraboya.estudio), donde produce y trabaja hace años."),
+    h("div", { class: "row wrap" }, link("instagram", "Claraboya Estudio en Instagram"), link("repo", "Ver el código en GitHub")),
 
     h("h2", null, "Créditos"),
     h("p", { class: "muted small" }, "7-Zip, de Igor Pavlov (licencia LGPL), para los archivos .7z. La lectura de sesiones de Pro Tools se basa en ptformat, de Damien Zammit (LGPL). Tipografía Archivo, de Omnibus-Type (SIL Open Font License). Instalador hecho con NSIS."));
@@ -624,8 +624,7 @@ async function renderContent() {
       h("h3", null, "Creá tu primera tarea"),
       h("p", null, "Una tarea dice qué carpetas respaldar, a dónde y cuándo."),
       h("div", { class: "row", style: { justifyContent: "center", marginTop: "14px" } },
-        h("button", { class: "btn primary", onclick: () => openEditorNew("proyectos") }, "Proyectos de DAW"),
-        h("button", { class: "btn", onclick: () => openEditorNew("incremental") }, "Respaldo clásico"))));
+        h("button", { class: "btn primary", onclick: newTaskDialog }, "Crear tarea"))));
     return;
   }
   const facts = [
@@ -640,8 +639,7 @@ async function renderContent() {
         !t.enabled ? h("span", { class: "tag" }, "Desactivada") : null, t.group ? h("span", { class: "tag" }, t.group) : null),
       h("div", { class: "facts" }, facts)),
     h("div", { class: "task-actions" },
-      h("button", { class: "btn primary", onclick: () => attempt(() => api("run", { ids: [t.id] }), "En la cola: " + t.name) }, icon("play"), "Ejecutar ahora"),
-      (t.type === "incremental" || t.type === "diferencial") ? h("button", { class: "btn", onclick: () => attempt(() => api("run", { ids: [t.id], force: true }), "En la cola un respaldo completo de " + t.name) }, "Forzar completo") : null,
+      h("button", { class: "btn primary", onclick: () => runWithPreview(t) }, icon("play"), "Ejecutar ahora"),
       h("button", { class: "btn", onclick: () => openEditor(t) }, "Editar"),
       h("button", { class: "btn", onclick: () => taskMenu(t) }, "Más…")));
   const body = h("div", { id: "taskbody" });
@@ -948,10 +946,40 @@ function newTaskDialog() {
     title: "Nueva tarea", size: "md",
     body: h("div", { class: "types", style: { gridTemplateColumns: "1fr" } },
       opt("proyectos", "Proyectos de DAW", "Busca tus proyectos de Ableton, Cubase y Pro Tools, guarda una versión cada vez que los guardás o cerrás el programa, y te deja volver a cualquier versión."),
-      opt("incremental", "Respaldo clásico", "Como en Cobian: copia carpetas completas, incrementales o diferenciales, con o sin compresión, en el horario que elijas."),
+      opt("completo", "Copia de carpetas", "Copia las carpetas que elijas en el horario que quieras. En cada respaldo actualiza el destino con lo nuevo y lo que modificaste, comparando fecha y tamaño. Puede guardar puntos de restauración."),
       opt("ficticio", "Tarea de eventos", "No copia nada: sirve para programar acciones, como cerrar un programa o apagar el equipo.")),
     foot: [h("button", { class: "btn", onclick: close }, "Cancelar")],
   });
+}
+
+// Ejecutar a mano: antes de copiar muestra qué se va a copiar.
+async function runWithPreview(t) {
+  const go = () => attempt(() => api("run", { ids: [t.id] }), "En la cola: " + t.name);
+  if (t.type !== "completo" && t.type !== "incremental" && t.type !== "diferencial") return go();
+  const close = sheet({ title: "Vista previa: " + t.name, size: "md", body: h("p", { class: "muted" }, "Comparando el origen con el destino…") });
+  let p;
+  try { p = await api("preview", { id: t.id }); } catch (e) { close(); toast(e.message, true); return; }
+  if (!p.supported) { close(); return go(); }
+  const kindTag = { nuevo: ["green", "nuevo"], modificado: ["amber", "modificado"], quitar: ["red", "se quita"] };
+  const total = (p.dests || []).reduce((n, d) => n + d.new + d.changed + d.removed, 0);
+  const body = h("div", null,
+    total === 0 ? h("p", null, "Está todo al día: no hay nada nuevo ni modificado para copiar.") : null,
+    (p.dests || []).map((d) => h("div", { class: "block" },
+      h("h3", null, d.dest),
+      d.error ? h("div", { class: "note-box" }, "No se pudo revisar este destino: " + d.error) :
+      h("div", null,
+        h("p", { class: "muted small" },
+          d.new + " " + (d.new === 1 ? "archivo nuevo" : "archivos nuevos") + " · " + d.changed + " " + (d.changed === 1 ? "modificado" : "modificados") +
+          (t.mirror ? " · " + d.removed + " para quitar (espejo)" : "") + " · " + fmtBytes(d.bytes) + " para copiar"),
+        d.items.length ? h("div", { class: "items" }, d.items.map((it) => h("div", { class: "it" },
+          h("span", { class: "tag " + kindTag[it.kind][0] }, kindTag[it.kind][1]),
+          h("span", { class: "txt", title: it.rel }, it.rel),
+          h("span", { class: "faint small" }, fmtBytes(it.size))))) : null,
+        d.more ? h("p", { class: "muted small" }, "… y " + d.more + " más.") : null))),
+    t.restorePoints && total ? h("p", { class: "muted small" }, "Lo que se reemplace o se quite queda guardado en los puntos de restauración.") : null);
+  sheet({ title: "Vista previa: " + t.name, size: "md", body,
+    foot: [h("button", { class: "btn", onclick: () => $("#layer").replaceChildren() }, "Cancelar"),
+      h("button", { class: "btn primary", onclick: () => { $("#layer").replaceChildren(); go(); } }, total ? "Copiar ahora" : "Ejecutar igual")] });
 }
 
 async function openEditorNew(type) {
@@ -968,7 +996,7 @@ function openEditor(orig, startTab, isNew) {
   const tabsFor = () => {
     if (t.type === "proyectos") return [["general", "General"], ["archivos", "Carpetas y destino"], ["musica", "Música"], ["horario", "Horario"], ["filtros", "Filtros"], ["eventos", "Eventos"], ["avanzado", "Avanzado"]];
     if (t.type === "ficticio") return [["general", "General"], ["horario", "Horario"], ["eventos", "Eventos"]];
-    return [["general", "General"], ["archivos", "Archivos"], ["horario", "Horario"], ["dinamica", "Dinámica"], ["compresion", "Compresión"], ["filtros", "Filtros"], ["eventos", "Eventos"], ["avanzado", "Avanzado"]];
+    return [["general", "General"], ["archivos", "Archivos"], ["horario", "Horario"], ["compresion", "Compresión"], ["filtros", "Filtros"], ["eventos", "Eventos"], ["avanzado", "Avanzado"]];
   };
   const side = h("div", { class: "sidetabs", role: "tablist" });
   const pane = h("div", { class: "pane", role: "tabpanel" });
@@ -1053,16 +1081,14 @@ function editorPane(t, tab, redraw) {
   switch (tab) {
     case "general": {
       const typeOpt = (v, title, text) => h("label", { class: "type-opt" },
-        h("input", { type: "radio", name: "ttype", checked: t.type === v, onchange: () => { t.type = v; if (v === "proyectos") t.separated = false; redraw(); } }),
+        h("input", { type: "radio", name: "ttype", checked: t.type === v || (v === "completo" && (t.type === "incremental" || t.type === "diferencial")), onchange: () => { t.type = v; t.separated = false; if (v === "completo") { t.direct = true; t.useArchiveAttr = false; } redraw(); } }),
         h("b", null, title), h("small", null, text));
       return [
-        h("h2", null, "General"), h("p", { class: "muted" }, "El tipo define cómo se guardan las copias."),
+        h("h2", null, "General"), h("p", { class: "muted" }, "El tipo define qué hace la tarea."),
         fText(t, "name", "Nombre"),
         h("div", { class: "types" },
           typeOpt("proyectos", "Proyectos de DAW", "Versiones por proyecto, con samples externos."),
-          typeOpt("completo", "Completo", "Copia todo cada vez."),
-          typeOpt("incremental", "Incremental", "Sólo lo cambiado desde el último respaldo."),
-          typeOpt("diferencial", "Diferencial", "Lo cambiado desde el último completo."),
+          typeOpt("completo", "Copia de carpetas", "Actualiza el destino con lo nuevo y lo modificado."),
           typeOpt("ficticio", "Sólo eventos", "No copia: ejecuta acciones.")),
         h("div", { class: "inline-fields" },
           fCheck(t, "enabled", "Tarea activa"),
@@ -1070,17 +1096,14 @@ function editorPane(t, tab, redraw) {
             h("input", { type: "text", value: t.group || "", list: "groups", oninput: (e) => (t.group = e.target.value) }),
             h("datalist", { id: "groups" }, [...new Set((S.data.tasks || []).map((x) => x.group).filter(Boolean))].map((g) => h("option", { value: g }))))),
         t.type !== "ficticio" && t.type !== "proyectos" ? h("div", { class: "block" },
-          h("h3", null, "Dónde queda cada respaldo"),
-          h("div", { class: "types" },
-            layoutOpt("fecha", "Una carpeta nueva cada vez", "Con la fecha y la hora en el nombre. Se van guardando varias copias."),
-            layoutOpt("tarea", "Una carpeta con el nombre de la tarea", "Cada respaldo actualiza esa misma copia."),
-            layoutOpt("directo", "Directo en el destino", "Sin carpetas extra: cada carpeta de origen queda tal cual, una al lado de la otra.")),
-          isDirectTask(t) && (t.sources || []).length === 1 ? fCheck(t, "contentsOnly", "Copiar sólo lo que hay adentro, sin crear la carpeta del origen", "Así lo hace Cobian: sirve para seguir actualizando una copia que ya tenés.", redraw) : null,
+          h("h3", null, "Cómo copia"),
+          h("p", { class: "muted small" }, "Cada respaldo actualiza la misma copia en el destino: copia los archivos nuevos y los que cambiaron (compara la fecha de modificación y el tamaño con la copia). Así, si guardaste otra vez un proyecto, se copia aunque no sea un archivo nuevo."),
+          (t.sources || []).length === 1 ? fCheck(t, "contentsOnly", "Copiar sólo lo que hay adentro, sin crear la carpeta del origen", "Sirve para seguir actualizando una copia que ya tenés en el destino.", redraw) : null,
           layoutPreview(t),
-          isDirectTask(t) && !["", "ninguna", "individual"].includes(t.compression || "") ? h("div", { class: "note-box" }, "Con compresión en un solo archivo, el archivo lleva el nombre de la tarea (Compresión → Sin comprimir para tener las carpetas sueltas).") : null,
-          isDirectTask(t) && !t.mirror ? h("p", { class: "muted small" }, "Para que lo que borrás en el origen también se vaya del destino, activá Espejo en Avanzado. Lo que quita no se borra: se aparta en “_Espejo seguro”.") : null,
-          fCheck(t, "includeSubdirs", "Incluir subcarpetas"),
-          isWin() ? fCheck(t, "useArchiveAttr", "Detectar cambios con el atributo de archivo de Windows", "Si no, se comparan fecha y tamaño (recomendado). Si lo activás y Cobian también usa el atributo, se pisan.") : null) : null,
+          ["", "ninguna"].includes(t.compression || "") ? fCheck(t, "restorePoints", "Guardar puntos de restauración", "Antes de reemplazar o quitar un archivo del destino, guarda la versión anterior en “_Resguardo versiones”, en una carpeta con la fecha. Se conservan los últimos 5: al hacer el sexto se borra el más viejo.") : null,
+          !["", "ninguna", "individual"].includes(t.compression || "") ? h("div", { class: "note-box" }, "Con compresión en un solo archivo, el archivo lleva el nombre de la tarea (Compresión → Sin comprimir para tener las carpetas sueltas).") : null,
+          !t.mirror ? h("p", { class: "muted small" }, "Para que lo que borrás en el origen también se vaya del destino, activá Espejo en Avanzado.") : null,
+          fCheck(t, "includeSubdirs", "Incluir subcarpetas")) : null,
         t.type !== "ficticio" && isWin() ? fCheck(t, "useVSS", "Usar instantáneas de volumen (VSS) para copiar archivos abiertos", "Necesita ejecutar Resguardo como administrador.") : null,
       ];
     }
@@ -1229,11 +1252,9 @@ function editorPane(t, tab, redraw) {
       return [
         h("h2", null, "Avanzado"),
         t.type !== "proyectos" ? h("div", { class: "block" },
-          isWin() && t.useArchiveAttr ? fCheck(t, "clearArchiveAttr", "Limpiar el atributo de archivo después de copiar") : null,
-          fCheck(t, "mirror", "Espejo: quitar del destino lo que se borró en el origen", "Sólo cuando no se crea una carpeta nueva cada vez. Lo quitado se aparta en una carpeta “_Espejo seguro” (se cambia en Opciones). Nunca toca lo que está fuera de las carpetas de origen.") ,
+          fCheck(t, "mirror", "Espejo: quitar del destino lo que se borró en el origen", "Lo quitado se aparta en una carpeta “_Espejo seguro” (se cambia en Opciones), o en los puntos de restauración si están activados. Nunca toca lo que está fuera de las carpetas de origen.") ,
           fCheck(t, "absolutePaths", "Usar rutas completas (C\\Usuarios\\…) dentro del respaldo"),
           fCheck(t, "topParentDir", "Guardar todos los respaldos de la tarea dentro de una carpeta con su nombre"),
-          fCheck(t, "typeInName", "Agregar el tipo (Completo, Incremental…) al nombre del respaldo"),
           fCheck(t, "ignoreEmptyDirs", "Ignorar carpetas vacías")) : null,
         isWin() ? h("div", { class: "block" }, h("h3", null, "Ejecutar como otro usuario"),
           h("p", { class: "muted small" }, "Útil para destinos en otra computadora de la red que piden usuario y contraseña."),

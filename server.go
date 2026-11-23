@@ -340,6 +340,7 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 		links := map[string]string{
 			"repo":      "https://github.com/joaquinnachman/resguardo",
 			"descargas": "https://github.com/joaquinnachman/resguardo#descargas",
+			"instagram": "https://instagram.com/claraboya.estudio",
 		}
 		u, ok := links[b.Which]
 		if !ok {
@@ -377,8 +378,7 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 			t.Projects.Layout = "simple"
 			t.Projects.CopyAll = true
 		} else {
-			t.Separated = false
-			t.Direct = true
+			simplifyTask(&t)
 		}
 		writeJSON(w, t)
 	case "task/save":
@@ -394,6 +394,7 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 		if t.Created.IsZero() {
 			t.Created = time.Now()
 		}
+		simplifyTask(&t)
 		if err := s.store.PutTask(t); err != nil {
 			writeErr(w, 500, err.Error())
 			return
@@ -462,6 +463,24 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 		_ = readBody(r, &b)
 		_ = s.store.MoveTask(b.ID, b.Delta)
 		writeJSON(w, map[string]bool{"ok": true})
+	case "preview":
+		var b struct {
+			ID string `json:"id"`
+		}
+		_ = readBody(r, &b)
+		t, ok := s.store.GetTask(b.ID)
+		if !ok {
+			writeErr(w, 404, "no existe la tarea")
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Minute)
+		defer cancel()
+		p, err := PreviewTask(ctx, s.store, t, s.store.GetSettings(), s.log)
+		if err != nil {
+			writeErr(w, 500, err.Error())
+			return
+		}
+		writeJSON(w, p)
 	case "run":
 		var b struct {
 			IDs     []string `json:"ids"`
@@ -986,6 +1005,7 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, t := range b.Tasks {
+			simplifyTask(&t)
 			t.ID = newID()
 			t.Created = time.Now()
 			fillSlices(&t)

@@ -135,11 +135,12 @@ label.check span small { display: block; color: var(--muted); font-size: 12.5px;
   padding: 10px 16px; border-bottom: 1px solid var(--line);
   background: var(--rail);
 }
-.brand { display: flex; align-items: center; gap: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; flex: none; }
+.btn, .tag { white-space: nowrap; }
 .brand img { width: 28px; height: 28px; }
 .brand b { font-stretch: 78%; font-size: 19px; font-weight: 700; }
-.nav { display: flex; gap: 2px; padding: 3px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line-soft); }
-.nav button { border: 0; background: transparent; height: 28px; padding: 0 12px; border-radius: 6px; cursor: pointer; color: var(--muted); }
+.nav { display: flex; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: 3px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line-soft); }
+.nav button { border: 0; background: transparent; height: 28px; padding: 0 12px; white-space: nowrap; flex: none; border-radius: 6px; cursor: pointer; color: var(--muted); }
 .nav button[aria-current="page"] { background: var(--panel-2); color: var(--ink); box-shadow: 0 1px 0 var(--line); }
 .transport { display: flex; gap: 6px; align-items: center; margin-left: auto; }
 .daw-on { display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--muted); padding: 0 6px; }
@@ -306,6 +307,11 @@ label.check span small { display: block; color: var(--muted); font-size: 12.5px;
   .editor .sidetabs { flex-direction: row; overflow: auto; border-right: 0; }
   .split { grid-template-columns: 1fr; }
   .task-head { flex-direction: column; }
+  .topbar { flex-wrap: wrap; row-gap: 8px; }
+}
+@media (max-width: 720px) {
+  .brand b, .brand .tag { display: none; }
+  .nav button { padding: 0 9px; }
 }
 
 .daw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 2px 18px; }
@@ -335,3 +341,6 @@ label.check span small { display: block; color: var(--muted); font-size: 12.5px;
 .about-hist { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 6px; max-width: 72ch; }
 .about-hist li { display: grid; grid-template-columns: 56px 1fr; gap: 10px; }
 .about-hist b { color: var(--amber); font-variant-numeric: tabular-nums; }
+
+/* logo claro con la apariencia clara */
+:root[data-theme="claro"] img[src="icono.png"] { content: url("icono-claro.png"); }

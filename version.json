@@ -1,21 +1,25 @@
 {
   "datos": {
     "app": "Resguardo",
-    "version": "1.2.4",
+    "version": "1.3.0",
     "date": "2026-11-22",
     "notes": [
-      "Nueva sección \"Acerca de\": para qué es Resguardo, cómo lo fuimos haciendo, quién lo hace, la versión que tenés y un botón para buscar actualizaciones."
+      "Un solo tipo de copia: en cada respaldo actualiza el destino con lo nuevo y lo modificado (compara fecha y tamaño, así un proyecto guardado otra vez se copia). Las tareas completas, incrementales y diferenciales pasan solas a este tipo.",
+      "Puntos de restauración (opcional): antes de reemplazar o quitar un archivo guarda la versión anterior; se conservan los últimos 5.",
+      "Vista previa al tocar \"Ejecutar ahora\": muestra qué se va a copiar, qué cambió y qué se quitaría, antes de copiar.",
+      "Logo nuevo, y versión clara del logo con la apariencia clara.",
+      "La barra de arriba entra bien en ventanas angostas y \"Crear tarea\" abre el menú con todas las variantes."
     ],
     "windows": {
-      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.2.4-Windows.zip",
-      "size": 4859604,
-      "sha256": "1fb9bcd2a10113109483516fdbed8c0f275ee6d62b684ea1ef757b943f9c4e65"
+      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.3.0-Windows.zip",
+      "size": 4808054,
+      "sha256": "f57bbb35b35a5f330861440aaba823bd1d7b5afe118ed77dd0c23b787b6bf650"
     },
     "mac": {
-      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.2.4-Mac.zip",
-      "size": 9053882,
-      "sha256": "5906f20118f20ae45fd2fb7036b11a90987dec9d0aff5c9bda43838e8d4256ed"
+      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.3.0-Mac.zip",
+      "size": 8999560,
+      "sha256": "c56b2ddccce74a90b2160e692fe4d85e7173efc357dc941e9cb002293a1d6fa4"
     }
   },
-  "firma": "qC956CsWNaowCwgYmgZi2X/rx1hMQku0Qhj/RJkuC0zRW5Zj8BpLA/IwekxEBWnP+lpkBe3PHp8obyvZ/SEzCg=="
+  "firma": "RF1wcs/AGOUkE7p89SxZnfLX5AXjRw3UiD1NCU5N/7EeL4u55LID8Zy5BeEshymVBiOOdIvgInfiDHxNf3PqCg=="
 }
