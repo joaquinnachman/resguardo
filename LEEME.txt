@@ -1,4 +1,4 @@
-RESGUARDO 1.2.1 — respaldos para músicos y productores
+RESGUARDO 1.2.2 — respaldos para músicos y productores
 =====================================================
 
 Hace todo lo que hace Cobian Backup (tareas completas, incrementales y
@@ -74,11 +74,21 @@ podés mandarlas a otra carpeta de destino. Las contraseñas no se importan.
 
 CÓMO QUEDAN LOS RESPALDOS DE PROYECTOS
 --------------------------------------
+Con "Cada carpeta tal cual" (lo que viene en las tareas nuevas):
+<destino>\<carpeta de tus proyectos>\<proyecto>\   igual que en el origen, se abre directo
+<destino>\_Resguardo versiones\                    lo que se fue reemplazando, por fecha
+Con "Copiar toda la carpeta" también se copia lo que no está dentro de un
+proyecto (textos, PDFs, referencias), tal cual.
+
+Con el diseño anterior ("Con Actual y Versiones anteriores"):
 <destino>\<carpeta de tus proyectos>\<proyecto>\
     Actual\                  copia al día: se abre directo con el DAW
-    Actual\_Samples externos\ los samples que usa y estaban en otro lado
     Versiones anteriores\    lo que se fue reemplazando, por fecha
     _resguardo\              listas de cada versión (no tocar)
+Se elige en la tarea: Editar > Música > Cómo quedan en el destino.
+
+Los samples que estaban en otra carpeta van en "_Samples externos" dentro de
+la copia del proyecto.
 
 Para volver a una versión usá Resguardo (Tareas > proyecto > Restaurar):
 arma una carpeta nueva con el proyecto completo de esa fecha y nunca pisa

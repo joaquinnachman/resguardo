@@ -73,6 +73,36 @@ func (m MFile) matches(info fs.FileInfo) bool {
 	return info.Size() == m.Size && mtimeClose(info.ModTime().UnixNano(), m.MTime)
 }
 
+// Con el diseño "simple" la copia al día de cada proyecto queda tal cual en
+// el destino (<destino>/<ruta del proyecto>/...) y lo demás va aparte:
+//
+//	<destino>/_Resguardo versiones/<ruta del proyecto>/Versiones anteriores/<fecha>/...
+//	<destino>/_Resguardo versiones/<ruta del proyecto>/_resguardo/instantaneas/...
+const dirVersionesSimple = "_Resguardo versiones"
+
+// projLayout: dónde queda la copia al día de un proyecto (cur) y dónde sus
+// versiones anteriores y listas (hist).
+type projLayout struct {
+	cur, hist string
+	simple    bool
+}
+
+func projectPaths(f FS, base, key string, cfg ProjectsConfig) projLayout {
+	if cfg.Layout == "simple" {
+		return projLayout{cur: projectRoot(f, base, key), hist: projectRoot(f, f.Join(base, dirVersionesSimple), key), simple: true}
+	}
+	root := projectRoot(f, base, key)
+	return projLayout{cur: f.Join(root, dirActual), hist: root}
+}
+
+// open: la carpeta que conviene abrir para ver el respaldo.
+func (l projLayout) open() string {
+	if l.simple {
+		return l.cur
+	}
+	return l.hist
+}
+
 func projectRoot(f FS, base, key string) string {
 	parts := strings.Split(key, "/")
 	for i := range parts {
@@ -285,8 +315,8 @@ func (rc *RunCtx) snapshotProject(p Project, files map[string]projFile, external
 	}
 	defer fsys.Close()
 	base = expandTokens(base, &rc.task)
-	root := projectRoot(fsys, base, p.Key)
-	actual := fsys.Join(root, dirActual)
+	lay := projectPaths(fsys, base, p.Key, rc.task.Projects)
+	root, actual := lay.hist, lay.cur
 	if err := fsys.MkdirAll(actual); err != nil {
 		return snapResult{}, true, fmt.Errorf("no se pudo crear %s: %w", actual, err)
 	}
@@ -412,8 +442,11 @@ func (rc *RunCtx) snapshotProject(p Project, files map[string]projFile, external
 	if err := writeManifest(fsys, fsys.Join(root, dirMeta, "instantaneas", ts+".json.gz"), m); err != nil {
 		return snapResult{}, true, fmt.Errorf("no se pudo guardar la lista de la instantánea: %w", err)
 	}
-	info := map[string]any{"clave": p.Key, "nombre": p.Name, "daw": p.DAWName, "origen": p.Dir, "actualizado": now,
-		"aviso": "Carpeta creada por Resguardo. 'Actual' es la copia al día del proyecto; 'Versiones anteriores' guarda lo que se fue reemplazando. Para volver a una versión usá Restaurar dentro de Resguardo."}
+	aviso := "Carpeta creada por Resguardo. 'Actual' es la copia al día del proyecto; 'Versiones anteriores' guarda lo que se fue reemplazando. Para volver a una versión usá Restaurar dentro de Resguardo."
+	if lay.simple {
+		aviso = "Carpeta creada por Resguardo con lo que se fue reemplazando en este proyecto. La copia al día está en " + lay.cur + ". Para volver a una versión usá Restaurar dentro de Resguardo."
+	}
+	info := map[string]any{"clave": p.Key, "nombre": p.Name, "daw": p.DAWName, "origen": p.Dir, "actualizado": now, "aviso": aviso}
 	if b, err := json.MarshalIndent(info, "", "  "); err == nil {
 		if w, err := fsys.Create(fsys.Join(root, dirMeta, "proyecto.json")); err == nil {
 			_, _ = w.Write(b)
@@ -636,7 +669,8 @@ func ProjectSnapshots(task Task, settings Settings, key string, di int) ([]Snaps
 		return nil, err
 	}
 	defer fsys.Close()
-	root := projectRoot(fsys, expandTokens(base, &task), key)
+	lay := projectPaths(fsys, expandTokens(base, &task), key, task.Projects)
+	root := lay.hist
 	parked := readParked(fsys, root)
 	out := []SnapshotInfo{}
 	for _, s := range listSnapshots(fsys, root) {
@@ -665,7 +699,8 @@ func SetSnapshotParked(task Task, settings Settings, key string, di int, snap st
 		return err
 	}
 	defer fsys.Close()
-	root := projectRoot(fsys, expandTokens(base, &task), key)
+	lay := projectPaths(fsys, expandTokens(base, &task), key, task.Projects)
+	root := lay.hist
 	m := readParked(fsys, root)
 	m[snap] = parked
 	return writeParked(fsys, root, m)
@@ -695,13 +730,14 @@ func RestoreSnapshot(ctx context.Context, task Task, settings Settings, key stri
 		return "", 0, err
 	}
 	defer fsys.Close()
-	root := projectRoot(fsys, expandTokens(base, &task), key)
+	lay := projectPaths(fsys, expandTokens(base, &task), key, task.Projects)
+	root := lay.hist
 	m, err := readManifest(fsys, fsys.Join(root, dirMeta, "instantaneas", snap+".json.gz"))
 	if err != nil {
 		return "", 0, fmt.Errorf("no se encontró la versión %s: %w", snap, err)
 	}
 	// Índice de dónde está cada archivo: primero "Actual", después las versiones posteriores.
-	actualTree := listTree(fsys, fsys.Join(root, dirActual))
+	actualTree := listTree(fsys, lay.cur)
 	verEntries, _ := fsys.ReadDir(fsys.Join(root, dirVersiones))
 	var vers []string
 	for _, e := range verEntries {
@@ -733,7 +769,7 @@ func RestoreSnapshot(ctx context.Context, task Task, settings Settings, key stri
 			}
 		}
 		if info, ok := actualTree[rel]; ok && info.Size() == mf.Size {
-			return fsys.Join(root, dirActual, rel)
+			return fsys.Join(lay.cur, rel)
 		}
 		// 2) por fecha y tamaño en cualquier lugar
 		for _, v := range vers {

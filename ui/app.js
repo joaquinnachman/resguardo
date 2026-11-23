@@ -947,8 +947,20 @@ function isContentsOnlyTask(t) {
   return isDirectTask(t) && !!t.contentsOnly && s.length === 1 && !s[0].forceFile && !t.absolutePaths && ["", "ninguna", "individual"].includes(t.compression || "");
 }
 
+// Ejemplo de cómo queda un proyecto en el primer destino.
+function projPreview(t) {
+  const d = (t.destinations || [])[0], src = (t.sources || [])[0];
+  if (!d || !d.path || !src || !src.path) return null;
+  const sep = d.kind && d.kind !== "local" ? "/" : isWin() ? "\\" : "/";
+  const base = d.path.replace(/[\\/]+$/, "") + sep + (baseName(src.path) || "…") + sep + "…" + sep + "Mi proyecto";
+  return h("p", { class: "muted small" }, "Va a quedar así: ", h("code", null, t.projects.layout === "simple" ? base + sep + "(los archivos del proyecto)" : base + sep + "Actual" + sep + "(los archivos del proyecto)"));
+}
+
 function editorPane(t, tab, redraw) {
   const P = t.projects;
+  const layoutProj = (v, title, text) => h("label", { class: "type-opt" },
+    h("input", { type: "radio", name: "playout", checked: (P.layout || "") === v, onchange: () => { P.layout = v; redraw(); } }),
+    h("b", null, title), h("small", null, text));
   const layoutOpt = (v, title, text) => h("label", { class: "type-opt" },
     h("input", { type: "radio", name: "tlayout", checked: layoutOf(t) === v, onchange: () => { t.separated = v === "fecha"; t.direct = v === "directo"; redraw(); } }),
     h("b", null, title), h("small", null, text));
@@ -1022,7 +1034,14 @@ function editorPane(t, tab, redraw) {
           fCheck(P, "triggerOnSave", "Cuando guardás el proyecto", "Espera a que dejes de guardar por un momento (se ajusta en Opciones → Música)."),
           fCheck(P, "triggerOnClose", "Cuando cerrás el DAW", "Hace un último repaso de los proyectos que cambiaron."),
           h("p", { class: "muted small" }, "Además corre en el horario de la pestaña Horario, como red de seguridad.")),
+        h("div", { class: "block" }, h("h3", null, "Cómo quedan en el destino"),
+          h("div", { class: "types" },
+            layoutProj("simple", "Cada carpeta tal cual", "Tus proyectos quedan igual que en el origen y se abren directo. Lo que se fue reemplazando va aparte, en “_Resguardo versiones”."),
+            layoutProj("", "Con “Actual” y “Versiones anteriores”", "Dentro de cada proyecto, una carpeta con la copia al día y otra con lo reemplazado (como en las primeras versiones).")),
+          projPreview(t),
+          P.layout !== "simple" ? h("p", { class: "muted small" }, "Si cambiás esto en una tarea que ya respaldó, la próxima vez copia todo de nuevo con el diseño nuevo; la copia anterior queda donde está y la podés borrar.") : null),
         h("div", { class: "block" }, h("h3", null, "Qué incluir"),
+          fCheck(P, "copyAll", "Copiar toda la carpeta", "También lo que no está dentro de un proyecto: textos, PDFs, referencias, carpetas sueltas. Se copia tal cual, sin versiones, y no se borra nada del destino."),
           fCheck(P, "includeExternal", "Samples que están fuera de la carpeta del proyecto", "Se guardan dentro del respaldo, en “_Samples externos”, así el proyecto abre completo aunque se pierda la librería."),
           fCheck(P, "includeFactory", "También los de librerías de fábrica (Core Library, packs, VST Sound)", "Ocupan mucho y se pueden reinstalar."),
           fCheck(P, "smartExclusions", "Saltear cachés que el DAW regenera solo", ".asd de Ableton, WaveCache.wfm de Pro Tools, imágenes de onda de Cubase, picos de REAPER."),

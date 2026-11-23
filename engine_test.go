@@ -658,3 +658,74 @@ func TestContentsOnlyMirror(t *testing.T) {
 		t.Fatal("con el origen desconectado se borró la copia")
 	}
 }
+
+func TestProjectsSimpleLayoutCopyAll(t *testing.T) {
+	store, log, e, root := testEnv(t)
+	src := filepath.Join(root, "PROTOOLS")
+	base := time.Now().Add(-48 * time.Hour)
+	pt := filepath.Join(src, "Clientes", "Banda X")
+	ptx, _ := os.ReadFile("testdata/pt/TestPTX.ptx")
+	writeFile(t, filepath.Join(pt, "Banda X.ptx"), ptx, base)
+	writeFile(t, filepath.Join(pt, "Audio Files", "monoTone.wav"), randBytes(5000), base)
+	writeFile(t, filepath.Join(pt, "letra.txt"), []byte("letra"), base)
+	// fuera de cualquier proyecto
+	writeFile(t, filepath.Join(src, "notas.txt"), []byte("notas"), base)
+	writeFile(t, filepath.Join(src, "Referencias", "mezcla.pdf"), []byte("pdf"), base)
+
+	dst := filepath.Join(root, "F")
+	task := NewTask()
+	task.Name = "Pro Tools"
+	task.Type = TypeProjects
+	task.Sources = []Location{{Path: src}}
+	task.Destinations = []Location{{Path: dst}}
+	task.Projects.Layout = "simple"
+	task.Projects.CopyAll = true
+	task.Projects.Thinning = false
+	store.PutTask(task)
+	run(t, e, task.ID, false, "")
+
+	cur := filepath.Join(dst, "PROTOOLS", "Clientes", "Banda X")
+	for _, p := range []string{"Banda X.ptx", "Audio Files/monoTone.wav", "letra.txt"} {
+		if _, err := os.Stat(filepath.Join(cur, filepath.FromSlash(p))); err != nil {
+			dumpLog(t, log)
+			t.Fatalf("falta %s en la copia del proyecto (sin “Actual”): %v", p, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(cur, "Actual")); err == nil {
+		t.Fatal("no tiene que haber carpeta Actual")
+	}
+	for _, p := range []string{"PROTOOLS/notas.txt", "PROTOOLS/Referencias/mezcla.pdf"} {
+		if _, err := os.Stat(filepath.Join(dst, filepath.FromSlash(p))); err != nil {
+			dumpLog(t, log)
+			t.Fatalf("no se copió %s (copiar toda la carpeta)", p)
+		}
+	}
+	hist := filepath.Join(dst, dirVersionesSimple, "PROTOOLS", "Clientes", "Banda X")
+	if snaps, _ := filepath.Glob(filepath.Join(hist, dirMeta, "instantaneas", "*.json.gz")); len(snaps) != 1 {
+		t.Fatalf("instantáneas: %v", snaps)
+	}
+
+	// Una segunda versión: lo reemplazado va a "_Resguardo versiones" y se
+	// puede restaurar la primera.
+	writeFile(t, filepath.Join(pt, "letra.txt"), []byte("letra nueva"), time.Now())
+	run(t, e, task.ID, false, "")
+	if b, _ := os.ReadFile(filepath.Join(cur, "letra.txt")); string(b) != "letra nueva" {
+		t.Fatal("la copia no quedó al día")
+	}
+	old, _ := filepath.Glob(filepath.Join(hist, dirVersiones, "*", "letra.txt"))
+	if len(old) != 1 {
+		t.Fatalf("versión anterior: %v", old)
+	}
+	snaps, err := ProjectSnapshots(task, store.GetSettings(), "PROTOOLS/Clientes/Banda X", 0)
+	if err != nil || len(snaps) != 2 {
+		t.Fatalf("%v %v", snaps, err)
+	}
+	target := filepath.Join(root, "Restaurado")
+	dir, _, err := RestoreSnapshot(context.Background(), task, store.GetSettings(), "PROTOOLS/Clientes/Banda X", 0, snaps[1].Name, RestoreOptions{Target: target}, &Progress{}, log)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, "letra.txt")); string(b) != "letra" {
+		t.Fatalf("restauró %q", b)
+	}
+}

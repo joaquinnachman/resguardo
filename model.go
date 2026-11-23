@@ -9,7 +9,7 @@ import (
 const AppName = "Resguardo"
 
 // AppVersion es var (y no const) para poder compilar versiones de prueba con -ldflags -X.
-var AppVersion = "1.2.1"
+var AppVersion = "1.2.2"
 
 // ---------- Tareas ----------
 
@@ -90,18 +90,25 @@ type ProjectOverride struct {
 }
 
 type ProjectsConfig struct {
-	DAWs            []string                   `json:"daws"`
-	TriggerOnSave   bool                       `json:"triggerOnSave"`
-	TriggerOnClose  bool                       `json:"triggerOnClose"`
-	IncludeExternal bool                       `json:"includeExternal"`
-	IncludeFactory  bool                       `json:"includeFactory"`
-	SmartExclusions bool                       `json:"smartExclusions"`
-	KeepVersions    int                        `json:"keepVersions"` // 0 = todas
-	KeepDays        int                        `json:"keepDays"`     // 0 = sin límite
-	Thinning        bool                       `json:"thinning"`
-	Verify          bool                       `json:"verify"`
-	MaxDepth        int                        `json:"maxDepth"`
-	Overrides       map[string]ProjectOverride `json:"overrides"`
+	DAWs            []string `json:"daws"`
+	TriggerOnSave   bool     `json:"triggerOnSave"`
+	TriggerOnClose  bool     `json:"triggerOnClose"`
+	IncludeExternal bool     `json:"includeExternal"`
+	IncludeFactory  bool     `json:"includeFactory"`
+	SmartExclusions bool     `json:"smartExclusions"`
+	KeepVersions    int      `json:"keepVersions"` // 0 = todas
+	KeepDays        int      `json:"keepDays"`     // 0 = sin límite
+	Thinning        bool     `json:"thinning"`
+	Verify          bool     `json:"verify"`
+	MaxDepth        int      `json:"maxDepth"`
+	// Layout: "simple" = cada proyecto queda tal cual en el destino y las
+	// versiones anteriores van aparte, en "_Resguardo versiones"; vacío = el
+	// diseño de antes (Actual / Versiones anteriores dentro de cada proyecto).
+	Layout string `json:"layout"`
+	// CopyAll: también copia lo que no está dentro de un proyecto (textos,
+	// PDFs, referencias, carpetas sueltas), tal cual y sin versiones.
+	CopyAll   bool                       `json:"copyAll"`
+	Overrides map[string]ProjectOverride `json:"overrides"`
 }
 
 type Task struct {

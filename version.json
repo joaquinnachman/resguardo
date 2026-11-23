@@ -1,25 +1,23 @@
 {
   "datos": {
     "app": "Resguardo",
-    "version": "1.2.1",
-    "date": "2026-11-15",
+    "version": "1.2.2",
+    "date": "2026-11-22",
     "notes": [
-      "Importar desde Cobian, ajustado con una lista real: las tareas que en Cobian actualizan siempre la misma copia quedan igual, con lo de adentro del origen directo en el destino, así Resguardo puede seguir esa misma copia sin empezar otra.",
-      "Nueva opción en \"Directo en el destino\": copiar sólo lo que hay adentro del origen, sin crear su carpeta (como Cobian).",
-      "Los horarios semanales con todos los días quedan como \"todos los días\", las exclusiones de carpetas y máscaras se leen tal cual y la opción \"carpeta superior\" de Cobian se respeta.",
-      "Al actualizar una copia, un archivo con el mismo tamaño y la misma fecha (con 2 segundos de margen) ya no se vuelve a copiar, aunque lo haya copiado otro programa.",
-      "Más seguridad en la ventana: no carga nada de afuera ni se puede mostrar dentro de otra página."
+      "Proyectos de DAW: nueva forma \"Cada carpeta tal cual\". Tus proyectos quedan en el destino igual que en el origen y se abren directo, sin la carpeta \"Actual\"; lo que se fue reemplazando va aparte, en \"_Resguardo versiones\". Se elige en Editar → Música → Cómo quedan en el destino.",
+      "Nueva opción \"Copiar toda la carpeta\" en las tareas de proyectos: también copia lo que no está dentro de un proyecto (textos, PDFs, referencias, carpetas sueltas), tal cual.",
+      "Las tareas nuevas copian las carpetas directo en el destino, sin carpetas extra con fecha o con el nombre de la tarea."
     ],
     "windows": {
-      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.2.1-Windows.zip",
-      "size": 4852869,
-      "sha256": "ec11f843733428f669936a91f8eda01bb4c7ce7c08198346f724da39671e9969"
+      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.2.2-Windows.zip",
+      "size": 4855450,
+      "sha256": "3b488669be7e1a11b3ef4179641691c6b6358ce5b49cfd3a0f6b8894179169b8"
     },
     "mac": {
-      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.2.1-Mac.zip",
-      "size": 9044539,
-      "sha256": "5bb3bc30b6ef22c6d4e94ef9509be5fae37651cc0a738be96401567a12cb7b0c"
+      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.2.2-Mac.zip",
+      "size": 9054911,
+      "sha256": "6aa2d57f3f793435a30e715f592c82057b522f1313845b3dfeacbb7ca9126519"
     }
   },
-  "firma": "+P4QNtf9qzBT1Q9NbLJzRsjuY6Bzz5dWWuoku87m10sMSOn7a1VtZZ8PeVGGL/h6enaBe1mrieVQ2m4WcHrsCQ=="
+  "firma": "5oxWw16muwwxUqiwMqyrPQ00F0j26C6JL/EmQQcm08Vhk0+A/cPqsBAzZJV5ByYTXtxeVzFu0v0yl7FiUVsCAQ=="
 }

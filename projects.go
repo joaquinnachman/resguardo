@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -43,6 +44,7 @@ func runProjects(rc *RunCtx, e *Engine) (*BackupRecord, error) {
 	if e != nil {
 		e.setProjects(task.ID, projects)
 	}
+	allProjects := projects
 	if rc.project != "" {
 		var only []Project
 		for _, p := range projects {
@@ -97,7 +99,7 @@ func runProjects(rc *RunCtx, e *Engine) (*BackupRecord, error) {
 			nfiles, nbytes := res.Changed, res.Bytes
 			rec := BackupRecord{ID: newID(), TaskID: task.ID, Type: "instantanea", Started: start, Finished: time.Now(),
 				Status: "ok", Project: p.Key, Snapshot: ts, Reason: rc.reason, Files: nfiles, Bytes: nbytes,
-				Outputs: []Output{{Dest: di, Path: projectRoot(LocalFS{}, expandTokens(d.Path, &task), p.Key), Kind: "proyecto"}}}
+				Outputs: []Output{{Dest: di, Path: projectPaths(LocalFS{}, expandTokens(d.Path, &task), p.Key, task.Projects).open(), Kind: "proyecto"}}}
 			if d.Kind != "" && d.Kind != "local" {
 				rec.Outputs[0].Path = describeLocation(d) + "/" + p.Key
 			}
@@ -109,6 +111,11 @@ func runProjects(rc *RunCtx, e *Engine) (*BackupRecord, error) {
 		if e != nil {
 			e.projectDone(task.ID, p, anyPending)
 		}
+	}
+	// "Copiar toda la carpeta": lo que no es de ningún proyecto, en las
+	// pasadas completas (no cuando se guarda un solo proyecto).
+	if task.Projects.CopyAll && rc.project == "" && rc.ctx.Err() == nil {
+		rc.copyLooseFiles(sources, allProjects, filter, readRoot)
 	}
 	st := rc.store.State(task.ID)
 	st.LastRun = time.Now()
@@ -139,4 +146,105 @@ func projectSourcePaths(task Task) []string {
 		out = append(out, filepath.Clean(expandTokens(p, &task)))
 	}
 	return out
+}
+
+// pathWithin: p es dir o está adentro de dir.
+func pathWithin(p, dir string) bool {
+	p, dir = filepath.Clean(p), filepath.Clean(dir)
+	if isWindows() {
+		p, dir = strings.ToLower(p), strings.ToLower(dir)
+	}
+	if p == dir {
+		return true
+	}
+	if !strings.HasSuffix(dir, string(filepath.Separator)) {
+		dir += string(filepath.Separator)
+	}
+	return strings.HasPrefix(p, dir)
+}
+
+// copyLooseFiles copia tal cual lo que está en las carpetas de proyectos pero
+// fuera de cualquier proyecto (textos, PDFs, referencias, carpetas sueltas),
+// en la misma estructura que el origen. Sin versiones: si cambió, se
+// reemplaza; no borra nada del destino.
+func (rc *RunCtx) copyLooseFiles(sources []string, projects []Project, filter *Filter, readRoot func(string) string) {
+	rc.prog.Set("Copiando el resto de las carpetas")
+	entries, warns, err := ScanSources(rc.ctx, sources, ScanOptions{Subdirs: true, Filter: filter, ReadRoot: readRoot,
+		FollowReparse: !rc.settings.IgnoreReparsePoints}, rc.log)
+	if err != nil {
+		rc.fail("Resto de las carpetas: %v", err)
+		return
+	}
+	for _, w := range warns {
+		rc.fail("%s", w)
+	}
+	inProject := func(real string) bool {
+		for _, p := range projects {
+			if pathWithin(real, p.Dir) {
+				return true
+			}
+		}
+		return false
+	}
+	var loose []Entry
+	for _, e := range entries {
+		if !e.Dir && !inProject(e.Real) {
+			loose = append(loose, e)
+		}
+	}
+	if len(loose) == 0 {
+		return
+	}
+	for _, d := range rc.task.Destinations {
+		if rc.ctx.Err() != nil {
+			return
+		}
+		fsys, base, err := openFS(d, rc.settings)
+		if err != nil {
+			rc.fail("Resto de las carpetas → %s: %v", describeLocation(d), err)
+			continue
+		}
+		base = expandTokens(base, &rc.task)
+		var todo []Entry
+		var bytes int64
+		target := func(e Entry) string {
+			parts := strings.Split(e.Rel, "/")
+			for i := range parts {
+				parts[i] = sanitizeName(parts[i])
+			}
+			return fsys.Join(append([]string{base}, parts...)...)
+		}
+		for _, e := range loose {
+			if st, err := fsys.Stat(target(e)); err == nil && st.Size() == e.Size && absDur(st.ModTime().Sub(e.MTime)) <= 2*time.Second {
+				continue
+			}
+			todo = append(todo, e)
+			bytes += e.Size
+		}
+		rc.prog.AddTotals(len(todo), bytes)
+		copied := 0
+		for _, e := range todo {
+			if rc.ctx.Err() != nil {
+				break
+			}
+			dst := target(e)
+			rc.prog.SetCurrent(e.Real)
+			err := fsys.MkdirAll(fsys.Dir(dst))
+			if err == nil {
+				err = rc.copier.CopyFile(fsys, e.Abs, dst, entryInfo(e), rc.task.Projects.Verify)
+			}
+			if err != nil && !errors.Is(err, errChangedDuringCopy) {
+				rc.fail("%s: %v", e.Real, err)
+			} else {
+				copied++
+				rc.files++
+				rc.bytes += e.Size
+			}
+			rc.prog.FileDone()
+		}
+		fsys.Close()
+		if copied > 0 {
+			rc.log.Info("Resto de las carpetas → %s: %d archivos copiados (%s)", describeLocation(d), copied, humanBytes(bytes))
+		}
+	}
 }

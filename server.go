@@ -349,6 +349,14 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 				t.Projects.KeepDays = 0
 			}
 		}
+		// Tareas nuevas: las carpetas quedan tal cual en el destino.
+		if t.Type == TypeProjects {
+			t.Projects.Layout = "simple"
+			t.Projects.CopyAll = true
+		} else {
+			t.Separated = false
+			t.Direct = true
+		}
 		writeJSON(w, t)
 	case "task/save":
 		var t Task
