@@ -284,6 +284,9 @@ func ScanSources(ctx context.Context, sources []string, opt ScanOptions, log *Lo
 			}
 		}
 		if !info.IsDir() {
+			if isNeverCopyFile(filepath.Base(src)) {
+				continue
+			}
 			if opt.Filter != nil && !opt.Filter.Allowed(src, info, filepath.Base(filepath.Dir(src))) {
 				continue
 			}
@@ -331,6 +334,9 @@ func ScanSources(ctx context.Context, sources []string, opt ScanOptions, log *Lo
 				}
 				if opt.Filter != nil && !opt.Filter.Allowed(pReal, fi, parentName) {
 					continue
+				}
+				if !fi.IsDir() && isNeverCopyFile(name) {
+					continue // archivos de Windows que nunca se copian, estén donde estén
 				}
 				if isDriveRoot(dirReal) && isSystemRootItem(name) {
 					continue // papelera, "System Volume Information", archivo de paginación…
@@ -406,3 +412,12 @@ var systemRootItems = map[string]bool{
 }
 
 func isSystemRootItem(name string) bool { return systemRootItems[strings.ToLower(name)] }
+
+// Archivos de Windows que nunca se intentan copiar, en ningún lugar: están
+// siempre en uso (memoria virtual, hibernación, volcados) y no son tuyos.
+var neverCopyFiles = map[string]bool{
+	"pagefile.sys": true, "hiberfil.sys": true, "swapfile.sys": true,
+	"dumpstack.log.tmp": true, "dumpstack.log": true,
+}
+
+func isNeverCopyFile(name string) bool { return neverCopyFiles[strings.ToLower(name)] }

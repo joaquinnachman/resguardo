@@ -836,3 +836,23 @@ func TestDriveRootHelpers(t *testing.T) {
 		t.Error("una carpeta común conserva su carpeta")
 	}
 }
+
+func TestNeverCopyPagefile(t *testing.T) {
+	root := t.TempDir()
+	now := time.Now()
+	writeFile(t, filepath.Join(root, "src", "pagefile.sys"), []byte("x"), now)
+	writeFile(t, filepath.Join(root, "src", "sub", "DumpStack.log.tmp"), []byte("x"), now)
+	writeFile(t, filepath.Join(root, "src", "sub", "tema.cpr"), []byte("x"), now)
+	ents, _, err := ScanSources(context.Background(), []string{filepath.Join(root, "src")}, ScanOptions{Subdirs: true}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range ents {
+		if strings.EqualFold(filepath.Base(e.Rel), "pagefile.sys") || strings.EqualFold(filepath.Base(e.Rel), "DumpStack.log.tmp") {
+			t.Fatalf("no tenía que listar %s", e.Rel)
+		}
+	}
+	if len(ents) != 3 { // src, src/sub, src/sub/tema.cpr
+		t.Fatalf("entradas: %d", len(ents))
+	}
+}
