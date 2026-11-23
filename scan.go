@@ -335,8 +335,8 @@ func ScanSources(ctx context.Context, sources []string, opt ScanOptions, log *Lo
 				if opt.Filter != nil && !opt.Filter.Allowed(pReal, fi, parentName) {
 					continue
 				}
-				if !fi.IsDir() && isNeverCopyFile(name) {
-					continue // archivos de Windows que nunca se copian, estén donde estén
+				if (!fi.IsDir() && isNeverCopyFile(name)) || (fi.IsDir() && isNeverCopyDir(name)) {
+					continue // cosas de Windows que nunca se copian ni se leen, estén donde estén
 				}
 				if isDriveRoot(dirReal) && isSystemRootItem(name) {
 					continue // papelera, "System Volume Information", archivo de paginación…
@@ -421,3 +421,9 @@ var neverCopyFiles = map[string]bool{
 }
 
 func isNeverCopyFile(name string) bool { return neverCopyFiles[strings.ToLower(name)] }
+
+// Carpetas de Windows que nunca se leen ni se copian, en ningún nivel: la
+// papelera y la información del volumen (dan "Acceso denegado").
+var neverCopyDirs = map[string]bool{"$recycle.bin": true, "recycler": true, "recycled": true, "system volume information": true}
+
+func isNeverCopyDir(name string) bool { return neverCopyDirs[strings.ToLower(name)] }

@@ -843,12 +843,14 @@ func TestNeverCopyPagefile(t *testing.T) {
 	writeFile(t, filepath.Join(root, "src", "pagefile.sys"), []byte("x"), now)
 	writeFile(t, filepath.Join(root, "src", "sub", "DumpStack.log.tmp"), []byte("x"), now)
 	writeFile(t, filepath.Join(root, "src", "sub", "tema.cpr"), []byte("x"), now)
+	writeFile(t, filepath.Join(root, "src", "$RECYCLE.BIN", "S-1-5-18", "basura"), []byte("x"), now)
+	writeFile(t, filepath.Join(root, "src", "sub", "System Volume Information", "x"), []byte("x"), now)
 	ents, _, err := ScanSources(context.Background(), []string{filepath.Join(root, "src")}, ScanOptions{Subdirs: true}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, e := range ents {
-		if strings.EqualFold(filepath.Base(e.Rel), "pagefile.sys") || strings.EqualFold(filepath.Base(e.Rel), "DumpStack.log.tmp") {
+		if strings.Contains(strings.ToLower(e.Rel), "pagefile") || strings.Contains(strings.ToLower(e.Rel), "dumpstack") || strings.Contains(strings.ToLower(e.Rel), "recycle") || strings.Contains(e.Rel, "Volume") {
 			t.Fatalf("no tenía que listar %s", e.Rel)
 		}
 	}
