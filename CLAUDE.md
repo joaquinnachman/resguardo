@@ -32,3 +32,8 @@ Reglas:
 - Importar de Cobian (`importar.go`): formato de Cobian 11 confirmado con la lista real de Joaquín (prueba `TestImportCobian11Real`, con nombres cambiados): filtros 1 = carpeta y 3 = máscara; "Create separated backups=false" con un origen y "Always create top directory=false" = lo de adentro del origen directo en el destino (modo directo + `contentsOnly`). Falta ver: `cbSettings.ini` (opciones generales), eventos, FTP y el orden de los días cuando no son los 7.
 - La interfaz no puede tener scripts en línea (CSP `script-src 'self'` en `securityHeaders`).
 - Al mandarle archivos a Joaquín por el chat, los `.exe` van dentro de un `.zip` (el chat no deja bajar `.exe`), y él no puede subir `.lst` de Cobian tal cual (UTF-16): pedírselos en `.zip` o guardados como UTF-8.
+
+## Pendiente para la próxima versión (pedido por Joaquín; no publicar hasta que lo pida)
+
+1. Acerca de → "Quién lo hace": "Joaquín Nachman: ingeniero de sonido, productor y cantante de Buenos Aires. Tiene Claraboya Estudio (instagram.com/claraboya.estudio), donde produce y trabaja hace años." Borrar la frase sobre Claude. El Instagram puede ir como botón por `open/link` (agregar "instagram" a la lista fija).
+2. Barra de arriba: el botón "Acerca de" se parte en dos líneas cuando la ventana es angosta; los botones no tienen que cortar el texto (white-space: nowrap) y la barra tiene que entrar bien en ventanas angostas.
