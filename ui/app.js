@@ -677,15 +677,10 @@ async function deleteTask(t) {
   const ok = await confirmSheet("Borrar " + t.name, h("div", null,
     h("p", null, "La tarea se quita de la lista. Los respaldos que ya hizo quedan en el destino, salvo que marques lo de abajo."),
     t.type !== "proyectos" ? h("label", { class: "check" }, files, h("span", null, "Borrar también los archivos de sus respaldos", h("small", null, "No se puede deshacer."))) : null),
-  "Borrar tarea", true);
+  "Borrar tarea", true, () => h("p", null, files.checked
+    ? h("span", null, "Se va a borrar la tarea ", h("b", null, t.name), " y ", h("b", null, "también los archivos de sus respaldos"), ". Eso no se puede deshacer.")
+    : h("span", null, "Se va a borrar la tarea ", h("b", null, t.name), ". Los respaldos que ya hizo quedan en el destino.")));
   if (!ok) return;
-  // Segunda confirmación (pedido de Joaquín): que no se borre una tarea de un solo clic.
-  const sure = await confirmSheet("¿Estás seguro?", h("div", null,
-    h("p", null, files.checked
-      ? h("span", null, "Se va a borrar la tarea ", h("b", null, t.name), " y ", h("b", null, "también los archivos de sus respaldos"), ". Eso no se puede deshacer.")
-      : h("span", null, "Se va a borrar la tarea ", h("b", null, t.name), ". Los respaldos que ya hizo quedan en el destino."))),
-  files.checked ? "Sí, borrar todo" : "Sí, borrar la tarea", true);
-  if (!sure) return;
   await attempt(() => api("task/delete", { id: t.id, files: files.checked }), "Tarea borrada");
   S.sel = null;
   await reload();
@@ -880,7 +875,8 @@ async function renderHistory(t, body) {
     h("span", { class: "grow" }),
     hist.length ? h("button", { class: "btn", onclick: async () => {
       const files = h("input", { type: "checkbox" });
-      const ok = await confirmSheet("Vaciar el historial", h("div", null, h("p", null, "Se quitan todos los respaldos no fijados del historial."), h("label", { class: "check" }, files, h("span", null, "Borrar también sus archivos del destino"))), "Vaciar", true);
+      const ok = await confirmSheet("Vaciar el historial", h("div", null, h("p", null, "Se quitan todos los respaldos no fijados del historial."), h("label", { class: "check" }, files, h("span", null, "Borrar también sus archivos del destino"))), "Vaciar", true,
+        () => files.checked ? "Se vacía el historial y se borran del destino los archivos de esos respaldos. Eso no se puede deshacer." : "Se vacía el historial. Los archivos de los respaldos quedan en el destino.");
       if (ok) { await attempt(() => api("history/delete", { task: t.id, ids: [], files: files.checked })); await loadHistory(t.id, true); renderContent(); }
     } }, "Vaciar historial") : null));
   if (!hist.length) {
@@ -918,7 +914,8 @@ async function renderHistory(t, body) {
             !r.parked ? h("button", { class: "btn danger", onclick: async () => {
               const files = h("input", { type: "checkbox", checked: !!t.separated });
               const ok = await confirmSheet("Borrar el respaldo del " + fmtDate(r.started), h("label", { class: "check" }, files, h("span", null, "Borrar también sus archivos del destino",
-                !t.separated ? h("small", null, "Esta tarea actualiza siempre la misma copia: borrar los archivos borra la copia actual.") : null)), "Borrar", true);
+                !t.separated ? h("small", null, "Esta tarea actualiza siempre la misma copia: borrar los archivos borra la copia actual.") : null)), "Borrar", true,
+                () => files.checked ? "Se borra el respaldo y sus archivos del destino. Eso no se puede deshacer." : "Se quita el respaldo del historial. Sus archivos quedan en el destino.");
               if (ok) { await attempt(() => api("history/delete", { task: t.id, ids: [r.id], files: files.checked })); await loadHistory(t.id, true); renderContent(); }
             } }, "Borrar…") : null)))));
       }
@@ -1370,7 +1367,7 @@ function renderRegistro() {
       h("button", { class: "btn", onclick: async () => { const t = await askText("Agregar una nota al registro", "Nota", ""); if (t) api("log/add", { text: t }); } }, "Agregar nota"),
       h("button", { class: "btn", onclick: () => { api("log/clear", {}); S.log = []; $("#log").replaceChildren(); } }, "Limpiar la vista"),
       h("button", { class: "btn", onclick: () => api("log/open", {}) }, "Abrir la carpeta de registros"),
-      h("button", { class: "btn danger", onclick: async () => { if (await confirmSheet("Borrar los registros", h("p", null, "Se borran todos los archivos de registro. No se puede deshacer."), "Borrar", true)) { await api("log/deleteall", {}); S.log = []; renderRegistro(); } } }, "Borrar registros")),
+      h("button", { class: "btn danger", onclick: async () => { if (await confirmSheet("Borrar los registros", h("p", null, "Se borran todos los archivos de registro. No se puede deshacer."), "Borrar", true, true)) { await api("log/deleteall", {}); S.log = []; renderRegistro(); } } }, "Borrar registros")),
     h("div", { id: "queue" }),
     h("div", { class: "log", id: "log" }, S.log.map(logRow)));
   renderQueue();
@@ -1437,7 +1434,7 @@ function renderTools() {
       h("div", null, h("button", { class: "btn primary", onclick: () => attempt(() => api("tools/decrypt", { src: deS.value, dst: deD.value, password: deP.value }), "Descifrando…") }, "Descifrar"))),
     tool("Borrar carpetas con rutas largas", "Borra carpetas que el Explorador no puede borrar porque sus rutas son demasiado largas.",
       pathPick(delP, { title: "Carpeta a borrar" }),
-      h("div", null, h("button", { class: "btn danger", onclick: async () => { if (delP.value && await confirmSheet("Borrar " + delP.value, h("p", null, "Se borra la carpeta con todo su contenido. No se puede deshacer."), "Borrar", true)) attempt(() => api("tools/delete", { path: delP.value }), "Borrando…"); } }, "Borrar"))),
+      h("div", null, h("button", { class: "btn danger", onclick: async () => { if (delP.value && await confirmSheet("Borrar " + delP.value, h("p", null, "Se borra la carpeta con todo su contenido. No se puede deshacer."), "Borrar", true, () => h("p", null, "Se va a borrar ", h("b", null, delP.value), " con todo lo que tiene adentro. Eso no se puede deshacer."))) attempt(() => api("tools/delete", { path: delP.value }), "Borrando…"); } }, "Borrar"))),
     tool("Importar desde Cobian", "Trae las tareas que ya tenés armadas en Cobian Backup 11 o Cobian Reflector. Antes de importar te muestra cómo van a quedar. Cobian no se toca.",
       h("div", { class: "row" },
         h("button", { class: "btn primary", onclick: findCobianLists }, "Buscar listas de Cobian"),
@@ -1718,7 +1715,17 @@ function stacked(fn) {
   });
 }
 
-function confirmSheet(title, body, okLabel, danger) {
+// confirmSheet pide confirmación. Con `sure` (borrados: pedido de Joaquín, doble
+// aviso siempre antes de borrar) después pregunta "¿Estás seguro?"; `sure` puede
+// ser true (texto general) o una función que arma el texto en ese momento.
+async function confirmSheet(title, body, okLabel, danger, sure) {
+  if (!(await confirmOnce(title, body, okLabel, danger))) return false;
+  if (!sure) return true;
+  const txt = typeof sure === "function" ? sure() : "Esto no se puede deshacer.";
+  return confirmOnce("¿Estás seguro?", typeof txt === "string" ? h("p", null, txt) : txt, "Sí, " + okLabel.charAt(0).toLowerCase() + okLabel.slice(1), true);
+}
+
+function confirmOnce(title, body, okLabel, danger) {
   return stacked((done) => {
     sheet({ title, body, size: "sm", onClose: () => done(false),
       foot: [h("button", { class: "btn", onclick: () => done(false) }, "Cancelar"), h("button", { class: "btn " + (danger ? "danger" : "primary"), onclick: () => done(true) }, okLabel)] });
