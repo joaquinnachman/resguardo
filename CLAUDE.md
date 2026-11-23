@@ -37,3 +37,4 @@ Reglas:
 
 1. Acerca de → "Quién lo hace": "Joaquín Nachman: ingeniero de sonido, productor y cantante de Buenos Aires. Tiene Claraboya Estudio (instagram.com/claraboya.estudio), donde produce y trabaja hace años." Borrar la frase sobre Claude. El Instagram puede ir como botón por `open/link` (agregar "instagram" a la lista fija).
 2. Barra de arriba: el botón "Acerca de" se parte en dos líneas cuando la ventana es angosta; los botones no tienen que cortar el texto (white-space: nowrap) y la barra tiene que entrar bien en ventanas angostas.
+3. Pantalla vacía de Tareas ("Creá tu primera tarea"): un solo botón "Crear tarea" que abra el mismo menú que "+ Nueva" (donde se elige Proyectos de DAW, Completo, etc.), en vez de los botones "Proyectos de DAW" y "Respaldo clásico".
