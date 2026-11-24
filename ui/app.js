@@ -292,6 +292,7 @@ async function poll() {
   r.status.daws = r.status.daws || [];
   S.data.status = r.status;
   S.data.tasks = (r.tasks || []).map(normTask);
+  handleAsks(r.status.asks);
   if (r.log && r.log.length) {
     S.log.push(...r.log);
     if (S.log.length > 3000) S.log = S.log.slice(-3000);
@@ -1044,6 +1045,52 @@ function fSelect(obj, key, label, options, onchange, numeric) {
   return label ? h("label", { class: "field" }, h("span", null, label), s) : s;
 }
 
+// Pestaña Horario → qué hacer cuando se conecta un disco externo de la tarea.
+function onConnectBlock(t, redraw) {
+  const roots = connectDrives(t);
+  return h("div", { class: "block" }, h("h3", null, "Al conectar el disco"),
+    h("p", { class: "muted small" }, "Cuando enchufás un disco externo que esta tarea usa como origen o destino" + (roots.length ? " (" + roots.join(", ") + ")" : "") + "."),
+    h("div", { class: "inline-fields" },
+      fSelect(t, "onConnect", "Qué hacer", [["", "Nada (sólo el horario)"], ["preguntar", "Preguntarme si copio"], ["comparar", "Mostrarme qué cambió y preguntar"], ["copiar", "Copiar solo"]], redraw),
+      t.onConnect ? fNum(t, "onConnectHours", "Si ya copió hace menos de (horas, 0 = siempre)") : null),
+    t.onConnect && !roots.length ? h("div", { class: "note-box" }, "Esta tarea no tiene orígenes ni destinos en un disco externo, así que esto no se va a usar.") : null,
+    t.onConnect ? h("p", { class: "muted small" }, "Si en esa letra aparece otro disco distinto del que usaste antes, no copia nada y lo anota en el registro.") : null);
+}
+
+function connectDrives(t) {
+  const out = [];
+  for (const l of [...(t.sources || []), ...(t.destinations || [])]) {
+    if (l.kind && l.kind !== "local") continue;
+    const p = String(l.path || "").replace(/^\?[DF]\?/, "");
+    let m = p.match(/^([A-Za-z]):/), r = null;
+    if (m && m[1].toUpperCase() !== "C") r = m[1].toUpperCase() + ":";
+    m = p.match(/^\/(Volumes|mnt)\/[^/]+/) || p.match(/^\/media\/[^/]+\/[^/]+/); if (m) r = m[0];
+    if (r && !out.includes(r)) out.push(r);
+  }
+  return out;
+}
+
+// Preguntas por discos conectados (vienen en el estado).
+let askOpen = null;
+async function handleAsks(asks) {
+  if (askOpen || !asks || !asks.length) return;
+  const a = asks[0];
+  askOpen = a.id;
+  try {
+    await api("asks/done", { id: a.id });
+    const t = (S.data.tasks || []).find((x) => x.id === a.taskId);
+    if (!t) return;
+    if (a.kind === "comparar") { await runWithPreview(t); return; }
+    const pick = await stacked((done) => sheet({ title: "Se conectó " + a.drive, size: "sm", onClose: () => done("no"),
+      body: h("p", null, "Es un disco de la tarea ", h("b", null, t.name), ". ¿Copio ahora?"),
+      foot: [h("button", { class: "btn", onclick: () => done("no") }, "Ahora no"),
+        h("button", { class: "btn", onclick: () => done("ver") }, "Ver qué cambió"),
+        h("button", { class: "btn primary", onclick: () => done("si") }, "Copiar ahora")] }));
+    if (pick === "si") await attempt(() => api("run", { ids: [t.id] }), "En la cola: " + t.name);
+    else if (pick === "ver") await runWithPreview(t);
+  } finally { askOpen = null; }
+}
+
 function isDirectTask(t) { return !t.separated && !!t.direct; }
 function layoutOf(t) { return t.separated ? "fecha" : t.direct ? "directo" : "tarea"; }
 function baseName(p) { const parts = String(p || "").split(/[\\/]+/).filter(Boolean); return parts.length ? parts[parts.length - 1].replace(/:$/, "") : ""; }
@@ -1191,6 +1238,7 @@ function editorPane(t, tab, redraw) {
           t.type !== "proyectos" ? fCheck(s, "onDawClose", "Cuando se cierra un DAW (Ableton, Cubase, Pro Tools…)") : null,
           t.type !== "proyectos" ? fCheck(s, "onDawSave", "Cuando se guarda un proyecto dentro de los orígenes") : null,
           t.type === "proyectos" ? h("p", { class: "muted small" }, "Los disparadores al guardar y al cerrar el DAW están en la pestaña Música.") : null),
+        t.type !== "ficticio" ? onConnectBlock(t, redraw) : null,
         h("div", { class: "block" }, h("h3", null, "Franja horaria (opcional)"),
           h("p", { class: "muted small" }, "Si la ejecución programada cae fuera de esta franja, se saltea."),
           h("div", { class: "inline-fields" }, fText(s, "windowFrom", "Desde", { type: "time" }), fText(s, "windowTo", "Hasta", { type: "time" }))),

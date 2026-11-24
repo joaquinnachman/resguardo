@@ -144,6 +144,12 @@ func startApp() (*App, error) {
 	server.quit = app.Quit
 	app.updater = NewUpdater(app)
 	server.upd = app.updater
+	engine.OnAsk = func() {
+		// Si la ventana está abierta, la pregunta aparece sola; si no, se abre.
+		if time.Now().Unix()-server.lastPoll.Load() > 8 {
+			openUIWindow(server.URL())
+		}
+	}
 	b, _ := json.Marshal(instanceInfo{Port: server.port, Token: server.token, PID: os.Getpid()})
 	_ = writeFileAtomic(instancePath(), b)
 	go func() {

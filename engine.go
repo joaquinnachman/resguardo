@@ -58,7 +58,11 @@ type Engine struct {
 	lastRestore  string
 
 	OnState func(state string, tip string)
-	quit    chan struct{}
+	OnAsk   func() // abre la ventana para preguntar (disco conectado)
+
+	asks   []ConnectAsk
+	drives map[string]bool // raíz de disco → estaba conectado
+	quit   chan struct{}
 }
 
 func NewEngine(store *Store, log *Logger) *Engine {
@@ -78,6 +82,7 @@ func (e *Engine) Start() {
 	go e.worker()
 	go e.scheduler()
 	go e.watchers()
+	go e.driveWatcher()
 	go e.discoverAll()
 	// tareas que corren al iniciar
 	for _, t := range e.store.GetTasks() {
@@ -225,6 +230,7 @@ type Status struct {
 	Errors     int           `json:"errors"`
 	LastResult string        `json:"lastResult"`
 	Done       int64         `json:"done"`
+	Asks       []ConnectAsk  `json:"asks"`
 }
 
 func (e *Engine) Status() Status {
@@ -248,6 +254,7 @@ func (e *Engine) Status() Status {
 		}
 	}
 	sort.Strings(st.DAWs)
+	st.Asks = append([]ConnectAsk{}, e.asks...)
 	return st
 }
 

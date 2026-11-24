@@ -670,3 +670,17 @@ func refreshShellIcons() {
 func openExternal(url string) error {
 	return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
 }
+
+// volumeSerial devuelve el número de serie del volumen (cambia si en esa letra
+// aparece otro disco).
+func volumeSerial(root string) string {
+	p, err := windows.UTF16PtrFromString(root)
+	if err != nil {
+		return ""
+	}
+	var serial uint32
+	if windows.GetVolumeInformation(p, nil, 0, &serial, nil, nil, nil, 0) != nil {
+		return ""
+	}
+	return fmt.Sprintf("%08X", serial)
+}

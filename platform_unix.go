@@ -290,3 +290,6 @@ func openExternal(url string) error {
 	}
 	return exec.Command("xdg-open", url).Start()
 }
+
+// volumeSerial: en Mac y Linux no se usa (la carpeta de /Volumes ya lleva el nombre del disco).
+func volumeSerial(root string) string { return "" }

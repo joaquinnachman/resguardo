@@ -127,9 +127,15 @@ type Task struct {
 	ContentsOnly bool `json:"contentsOnly"`
 	// RestorePoints: antes de reemplazar un archivo en el destino guarda el
 	// anterior en "_Resguardo versiones/<fecha>"; se conservan las últimas 5.
-	RestorePoints  bool `json:"restorePoints"`
-	UseArchiveAttr bool `json:"useArchiveAttr"`
-	UseVSS         bool `json:"useVSS"`
+	RestorePoints bool `json:"restorePoints"`
+
+	// OnConnect: qué hacer cuando se conecta un disco de la tarea (origen o
+	// destino): "" nada, "copiar", "comparar" (vista previa) o "preguntar".
+	// OnConnectHours: no lo repite si la tarea corrió hace menos de estas horas.
+	OnConnect      string `json:"onConnect"`
+	OnConnectHours int    `json:"onConnectHours"`
+	UseArchiveAttr bool   `json:"useArchiveAttr"`
+	UseVSS         bool   `json:"useVSS"`
 
 	Sources      []Location `json:"sources"`
 	Destinations []Location `json:"destinations"`
@@ -183,7 +189,7 @@ func newID() string {
 func NewTask() Task {
 	t := Task{
 		ID: newID(), Name: "Nueva tarea", Enabled: true, Type: TypeIncr,
-		IncludeSubdirs: true, Separated: true,
+		IncludeSubdirs: true, Separated: true, OnConnectHours: 4,
 		Schedule:         Schedule{Kind: "diario", Time: "22:00", Weekdays: []int{1, 2, 3, 4, 5}, MonthDay: 1, Month: 1, EveryMinutes: 60},
 		FixedFullWeekday: -1, FullEvery: 0, FullCopiesToKeep: 3,
 		Compression: "ninguna", Format: "zip", Level: 6,
@@ -447,4 +453,7 @@ type TaskState struct {
 	LastRun   time.Time            `json:"lastRun"`
 	LastFull  time.Time            `json:"lastFull"`
 	SinceFull int                  `json:"sinceFull"`
+	// Volumes: número de serie del disco visto en cada raíz (E:\ → serie), para
+	// no copiar si en esa letra aparece otro disco.
+	Volumes map[string]string `json:"volumes,omitempty"`
 }

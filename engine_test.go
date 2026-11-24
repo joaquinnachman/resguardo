@@ -858,3 +858,64 @@ func TestNeverCopyPagefile(t *testing.T) {
 		t.Fatalf("entradas: %d", len(ents))
 	}
 }
+
+func TestDriveConnectTriggers(t *testing.T) {
+	store, log, e, root := testEnv(t)
+	disk := filepath.Join(root, "DISCO")
+	old := rootOfPath
+	rootOfPath = func(p string) string {
+		if strings.HasPrefix(p, disk) {
+			return disk
+		}
+		return ""
+	}
+	defer func() { rootOfPath = old }()
+	writeFile(t, filepath.Join(root, "src", "a.txt"), []byte("a"), time.Now())
+	mk := func(name, mode string) Task {
+		task := NewTask()
+		task.Name = name
+		simplifyTask(&task)
+		task.OnConnect = mode
+		task.Sources = []Location{{Path: filepath.Join(root, "src")}}
+		task.Destinations = []Location{{Path: filepath.Join(disk, name)}}
+		store.PutTask(task)
+		return task
+	}
+	copiar := mk("Copiar", "copiar")
+	preguntar := mk("Preguntar", "preguntar")
+	mk("Nada", "")
+
+	e.checkDrives() // disco desconectado al empezar
+	if len(e.Status().Queue) != 0 || len(e.Status().Asks) != 0 {
+		t.Fatal("no tenía que hacer nada")
+	}
+	os.MkdirAll(disk, 0o755) // se conecta
+	e.checkDrives()
+	st := e.Status()
+	if len(st.Queue) != 1 || st.Queue[0].TaskID != copiar.ID || st.Queue[0].Reason != "al conectar el disco" {
+		dumpLog(t, log)
+		t.Fatalf("cola: %+v", st.Queue)
+	}
+	if len(st.Asks) != 1 || st.Asks[0].TaskID != preguntar.ID {
+		t.Fatalf("preguntas: %+v", st.Asks)
+	}
+	e.AskDone(st.Asks[0].ID)
+	if len(e.Status().Asks) != 0 {
+		t.Fatal("AskDone")
+	}
+	// Sigue conectado: no repite.
+	e.checkDrives()
+	if len(e.Status().Asks) != 0 {
+		t.Fatal("repitió sin reconectar")
+	}
+	// Ya corrió hace poco: al reconectar, no repite (4 h por defecto).
+	s := store.State(preguntar.ID)
+	s.LastRun = time.Now()
+	os.Remove(disk)
+	e.checkDrives()
+	os.MkdirAll(disk, 0o755)
+	e.checkDrives()
+	if len(e.Status().Asks) != 0 {
+		t.Fatal("tenía que respetar las horas mínimas")
+	}
+}

@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -37,6 +38,7 @@ type Server struct {
 	quit     func()
 	srv      *http.Server
 	upd      *Updater
+	lastPoll atomic.Int64 // última vez que la ventana pidió el estado (unix)
 }
 
 func randHex(n int) string {
@@ -321,6 +323,7 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 			"instance": instanceName, "home": userHome(), "update": s.upd.Status(),
 		})
 	case "status":
+		s.lastPoll.Store(time.Now().Unix())
 		since, _ := strconv.ParseInt(r.URL.Query().Get("log"), 10, 64)
 		writeJSON(w, map[string]any{"status": s.engine.Status(), "log": s.log.Since(since), "tasks": s.taskViews(),
 			"version": AppVersion, "update": s.upd.Status()})
@@ -462,6 +465,13 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = readBody(r, &b)
 		_ = s.store.MoveTask(b.ID, b.Delta)
+		writeJSON(w, map[string]bool{"ok": true})
+	case "asks/done":
+		var b struct {
+			ID string `json:"id"`
+		}
+		_ = readBody(r, &b)
+		s.engine.AskDone(b.ID)
 		writeJSON(w, map[string]bool{"ok": true})
 	case "preview":
 		var b struct {
