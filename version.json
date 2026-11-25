@@ -1,24 +1,23 @@
 {
   "datos": {
     "app": "Resguardo",
-    "version": "1.3.1",
-    "date": "2026-11-23",
+    "version": "1.3.2",
+    "date": "2026-11-25",
     "notes": [
-      "Al copiar un disco entero (por ejemplo E:\\) copia lo de adentro directo en el destino, sin crear una carpeta con la letra del disco.",
-      "Nunca entra a la papelera ($RECYCLE.BIN) ni a \"System Volume Information\", así no aparecen más avisos de \"Acceso denegado\".",
-      "Nunca intenta copiar archivos de sistema de Windows como pagefile.sys, hiberfil.sys o DumpStack.log.tmp.",
-      "La barra de tareas de Windows toma el logo nuevo después de actualizar."
+      "Nuevo en Editar → Horario: \"Al conectar el disco\". Cuando enchufás un disco externo de la tarea puede preguntarte si copia, mostrarte qué cambió o copiar solo.",
+      "Antes de borrar cualquier cosa (una tarea, respaldos, registros o carpetas) pregunta una segunda vez \"¿Estás seguro?\".",
+      "En Filtros, la carpeta que elegís con \"Buscar…\" se agrega directo a la lista, sin tocar \"Agregar\"."
     ],
     "windows": {
-      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.3.1-Windows.zip",
-      "size": 4814615,
-      "sha256": "38888083f17027e00bec483064b3b36bf917972071bfd0dd59fa677f5fd9d84c"
+      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.3.2-Windows.zip",
+      "size": 4823271,
+      "sha256": "df7d3afb9b499c6612be99a1ec4b2cf92d724d9e989d316c674cda4d78437943"
     },
     "mac": {
-      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.3.1-Mac.zip",
-      "size": 9001264,
-      "sha256": "e5b1c301cd395f20b6153d597f1ee565e5ea05f2acd7b846d2f8badd7ae57fee"
+      "url": "https://raw.githubusercontent.com/joaquinnachman/resguardo/main/descargas/Resguardo-1.3.2-Mac.zip",
+      "size": 9016622,
+      "sha256": "f033bf1211e6ef561df80979f20b57053d0067056f98d69a8828c577e28b2121"
     }
   },
-  "firma": "hlaS0/jrD3MqARNJ2PA/A4e75KXmr9kvJ/R1oydhmknZxRq9L0wuCFFILqeCdCLTRTIU1KwwrmrXgFMG//l/Cg=="
+  "firma": "BxMKtfzIOzPVrfQxjIvJycgYgrl2fM2vVEksxE4/P6mLsCYd8LTpvIq3RuARel+sOrwHj0xqNE7G83ArxZz+DA=="
 }

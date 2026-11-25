@@ -511,6 +511,7 @@ const HISTORIA = [
   ["1.2.4", "Esta pantalla."],
   ["1.3", "Un solo tipo de copia que actualiza lo que cambió, puntos de restauración, vista previa antes de copiar y logo nuevo."],
   ["1.3.1", "Copiar un disco entero sin crear una carpeta con la letra, sin la papelera ni archivos de sistema de Windows, y el logo nuevo en la barra de tareas."],
+  ["1.3.2", "Qué hacer al conectar un disco externo, doble aviso antes de borrar y filtros que agregan la carpeta apenas la elegís."],
 ];
 
 function renderAbout() {

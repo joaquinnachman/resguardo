@@ -1,4 +1,4 @@
-RESGUARDO 1.3.1 — respaldos para músicos y productores
+RESGUARDO 1.3.2 — respaldos para músicos y productores
 =====================================================
 
 Copia tus carpetas en el horario que elijas y en cada respaldo actualiza
