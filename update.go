@@ -152,6 +152,7 @@ func (u *Updater) Run() {
 	} else if ok && l.Estado == "fallida" && !l.Visto {
 		u.app.log.Error("No se pudo instalar la versión %s (%s); sigue funcionando la %s", l.To, l.Error, AppVersion)
 	}
+	removeOldDownloads() // antes de bajar nada: así nunca se borra una descarga recién hecha
 	go u.cleanup()
 	first := time.After(20 * time.Second)
 	for {
@@ -267,6 +268,15 @@ func (u *Updater) maybeInstall(s Settings) {
 	u.mu.Unlock()
 	if man == nil || !can || !(s.UpdateInstall || want) {
 		return
+	}
+	if file != "" {
+		if _, err := os.Stat(file); err != nil {
+			// lo borró alguien (o un antivirus): se baja de nuevo
+			u.mu.Lock()
+			u.file = ""
+			u.mu.Unlock()
+			file = ""
+		}
 	}
 	if file == "" {
 		f, err := u.download(*man)
@@ -713,6 +723,12 @@ func (u *Updater) cleanup() {
 			_ = os.RemoveAll(b + ".fallida")
 		}
 	}
+}
+
+// removeOldDownloads borra los zips de actualizaciones anteriores. Se llama al
+// arrancar, antes de la primera búsqueda (hasta 1.3.2 se borraban 30 s después
+// y podía irse el zip recién bajado mientras se esperaba para instalarlo).
+func removeOldDownloads() {
 	entries, _ := os.ReadDir(updDir())
 	for _, e := range entries {
 		if strings.HasPrefix(e.Name(), "descarga-") {
